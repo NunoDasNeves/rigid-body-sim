@@ -289,10 +289,10 @@ void rendering_init(GameMemory* game_memory, GameRenderInfo* render_info, float 
 
     // specify top as the height the origin is in the bottom left
     projection = Mat4::ortho(
-        0.0F,
-        (float)width,
-        0.0F,
-        (float)height,
+        -1.0F,
+        1.0F,
+        -1.0F,
+        1.0F,
         -1.0F, 1.0F);
 
     view = Mat4::identity();

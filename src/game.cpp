@@ -8,7 +8,7 @@
 Color background_color = Color{0.5F, 0.5F, 1.0F, 1.0F};
 Color grid_color = Color{0.2F, 0.2F, 0.2F, 1.0F};
 
-#define GRID_SPACING 10
+#define GRID_SPACING 0.1
 
 void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buffer, GameRenderInfo* render_info)
 {
@@ -33,29 +33,29 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     rendering_set_camera(game_state->camera_pos);
 
     /* Grid lines */
-    for (int i = 0; i < 1024; ++i)
+    for (int i = 0; i < 20; ++i)
     {
         rendering_draw_line(
-            Vec2(-512.0F + i * GRID_SPACING, -512.0F),
-            Vec2(0.0F, 1024.0F),
+            Vec2(-1.0F + i * GRID_SPACING, -1.0F),
+            Vec2(0.0F, 2.0F),
             1,
             grid_color);
         rendering_draw_line(
-            Vec2(-512.0F, -512.0F + i * GRID_SPACING),
-            Vec2(1024.0F, 0.0F),
+            Vec2(-1.0F, -1.0F + i * GRID_SPACING),
+            Vec2(2.0F, 0.0F),
             1,
             grid_color);
     }
     
     rendering_draw_rect(
-            Vec2((f32)GAME_WIDTH_PX/2.0F, (f32)GAME_HEIGHT_PX/2.0F),
-            Vec2(10, 10),
+            Vec2(0.0F, 0.0F),
+            Vec2(0.01, 0.01),
             NULL,
             Color{1,0,0,1.0F});
     
     rendering_draw_rect(
-            Vec2((f32)0.0F, 0.0F),
-            Vec2(10, 10),
+            Vec2(-1.0F, -1.0F),
+            Vec2(0.01, 0.01),
             NULL,
             Color{1,1,1,1.0F});
 }

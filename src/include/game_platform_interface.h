@@ -13,8 +13,8 @@ typedef int ImageId;
 //static const int GAME_ASPECT_RATIO_HEIGHT = 9;
 //static const int GAME_RESOLUTION_BASE_FACTOR = 20;
 
-const u32 GAME_WIDTH_PX = 512;
-const u32 GAME_HEIGHT_PX = 512;
+const u32 GAME_WIDTH_PX = 760;
+const u32 GAME_HEIGHT_PX = 760;
 
 struct GameRenderInfo
 {
@@ -73,9 +73,6 @@ struct GameInputBuffer
     }
 };
 
-#define FUNC_PLATFORM_GL_GET_PROC_ADDRESS(name) void* name(const char* proc)
-typedef FUNC_PLATFORM_GL_GET_PROC_ADDRESS(PlatformGLGetProcAddress);
-
 void *DEBUG_platform_read_entire_file(const char *filename, s64 *returned_size);
 char *DEBUG_platform_read_entire_file_as_string(const char *filename, s64 *returned_size);
 void DEBUG_platform_free_file_memory(void *memory);
@@ -85,7 +82,7 @@ struct GameMemory
     unsigned memory_size;
     void* memory;
 
-    PlatformGLGetProcAddress* platform_gl_get_proc_address;
+    void* (*platform_gl_get_proc_address)(const char*);
 };
 
 void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info);
