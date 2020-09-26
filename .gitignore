@@ -1,0 +1,8 @@
+setup
+build
+*.exe
+*.dll
+.vscode
+sdl_main
+*.so
+*~
