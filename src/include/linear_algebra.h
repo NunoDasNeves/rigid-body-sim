@@ -240,7 +240,7 @@ struct Mat4
 
     static Mat4 ortho(float left, float right, float bottom, float top, float near, float far)
     {
-        // the arguments describe the size and position of a box in camera coordinates (near and far, i.e. z axis, is inverted from camera coords)
+        // the arguments describe the size and position of a 3d box in camera coordinates (near and far, i.e. z axis, is inverted from camera coords)
         // we need a matrix that transforms this box into a 2 unit wide cube centred at the origin (i.e. camera coords to CVV coords)
         // so there's two steps
 

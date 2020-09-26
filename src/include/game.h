@@ -1,26 +1,27 @@
 #ifndef GAME_H
-#include<vector>
 #include"linear_algebra.h"
 #include"game_math.h"
 
-struct DynamicObj {
+#define MAX_DYN_OBJS 128
+
+struct DynObj {
+    f32 mass; // if 0, no obj
+
+    f32 width;
+    f32 height;
+
     Vec2 pos;
     Vec2 vel;
     Vec2 accel;
     Vec2 alpha; // angular momentum
-    f32 mass;
+    enum {
+        Circle,
+        Rect,
+    } shape;
 };
 
-struct Circle : DynamicObj {
-    f32 radius;
-    Circle(f32 r) : radius(r) {}
-};
-
-struct StaticObj {
+struct StaticRect {
     Vec2 pos;
-};
-
-struct StaticRect : StaticObj {
     f32 width;
     f32 height;
 };
@@ -28,7 +29,7 @@ struct StaticRect : StaticObj {
 struct GameState
 {
     Vec2 camera_pos;
-    std::vector<DynamicObj> dyn_objs;
+    DynObj dyn_objs[MAX_DYN_OBJS];
 };
 
 void render_game(GameState* game_state);
