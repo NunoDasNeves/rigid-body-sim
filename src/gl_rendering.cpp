@@ -493,7 +493,7 @@ void rendering_draw_rect(Vec2 pos, Vec2 size, RenderTexture tex, Color color)
     {
         DEBUG_ASSERT(texture->initialized);
     }
-    draw_rect(pos, size, texture, (GLfloat*)RECT_DEFAULT_TEX_COORDS, color, false);
+    draw_rect(pos, size, texture, (GLfloat*)RECT_DEFAULT_TEX_COORDS, color, true);
 }
 
 void rendering_draw_sprite(Vec2 pos, Vec2 size, RenderTexture tex, uint32_t row, uint32_t col, Color color, bool hflip)

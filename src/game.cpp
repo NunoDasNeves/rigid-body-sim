@@ -46,24 +46,29 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             1,
             grid_color);
     }
-    
-    rendering_draw_rect(
-            Vec2(0.0F, 0.0F),
-            Vec2(0.01, 0.01),
-            NULL,
-            Color{1,0,0,1.0F});
-    
-    rendering_draw_rect(
-            Vec2(-1.0F, -1.0F),
-            Vec2(0.01, 0.01),
-            NULL,
-            Color{1,1,1,1.0F});
 
-    rendering_draw_circle(
-            Vec2(-0.5F, 0.5F),
-            0.2,
-            Color{1,1,1,1.0F});
-
+    for (int i = 0; i < MAX_DYN_OBJS; ++i)
+    {
+        DynObj *obj = &game_state->dyn_objs[i];
+        if (!obj->mass)
+            continue;
+        switch(obj->shape)
+        {
+            case DynObj::Circle:
+                rendering_draw_circle(
+                    obj->pos,
+                    obj->width,
+                    Color{1,1,1,1.0F});
+                break;
+            case DynObj::Rect:
+                rendering_draw_rect(
+                    obj->pos,
+                    Vec2(obj->width, obj->height),
+                    NULL,
+                    Color{1,1,1,1.0F});
+                break;
+        }
+    }
 }
 
 void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
@@ -75,6 +80,6 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     GameMemoryBlock* block = (GameMemoryBlock*)(game_memory->memory);
     GameState* game_state = &block->game_state;
 
-    game_state->dyn_objs[0] = DynObj{1, 10, 0, Vec2(0,0), Vec2(0,0), Vec2(0,0), Vec2(0,0), DynObj::Circle};
-
+    game_state->dyn_objs[0] = DynObj{1, 0.2, 0.2, Vec2(0.5,0), Vec2(0,0), Vec2(0,0), Vec2(0,0), DynObj::Circle};
+    game_state->dyn_objs[1] = DynObj{1, 0.2, 0.1, Vec2(-0.5,0), Vec2(0,0), Vec2(0,0), Vec2(0,0), DynObj::Rect};
 }
