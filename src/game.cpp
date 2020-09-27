@@ -58,6 +58,12 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             Vec2(0.01, 0.01),
             NULL,
             Color{1,1,1,1.0F});
+
+    rendering_draw_circle(
+            Vec2(-0.5F, 0.5F),
+            0.2,
+            Color{1,1,1,1.0F});
+
 }
 
 void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)

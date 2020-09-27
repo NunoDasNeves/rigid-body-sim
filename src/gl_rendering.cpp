@@ -31,6 +31,15 @@ struct Rect
     GLuint EBO;
 };
 
+#define NUM_CIRCLE_POINTS 20
+
+struct Circle
+{
+    GLuint VAO;
+    GLuint vertices_VBO;
+    GLuint EBO;
+};
+
 struct Line
 {
     GLuint VAO;
@@ -49,6 +58,7 @@ static const GLfloat RECT_DEFAULT_TEX_COORDS[RECT_TEX_COORDS_ARRAY_SIZE] =
 // Used to draw all primitive
 static Rect global_rect;
 static Line global_line;
+static Circle global_circle;
 
 // The shader used to draw rects
 static Shader sprite_shader;
@@ -253,6 +263,52 @@ static void init_rect(Rect* rect)
     glBindVertexArray(0);
 }
 
+static void init_circle(Circle* circle)
+{
+    // Create and bind VAO
+    glGenVertexArrays(1, &circle->VAO);
+    glBindVertexArray(circle->VAO);
+    {
+        // Vertex position array
+        glGenBuffers(1, &circle->vertices_VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, circle->vertices_VBO);
+        GLfloat vertices[(NUM_CIRCLE_POINTS + 1) * 3] = {0};
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STREAM_DRAW);
+
+        // vertex data interpretation - applied to currently bound VBO
+        // 1st arg is the vertex attribute location we want to configure (0), we specify this in the shader with layout(location = 0)
+        // 2nd arg is the number of components per vertex
+        // 3rd arg is the type of each element
+        // 4th arg is whether data should be normalized (mapped into range [-1, 1] or [0, 1] for unsigned)
+        // 5th arg is the stride
+        // 6th arg is a (byte) offset of where to start in the array
+
+        static const int VERT_POS_LOCATION = 0;
+        glVertexAttribPointer(VERT_POS_LOCATION, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(VERT_POS_LOCATION); // enable it, giving the vertex attribute location
+
+        // Index array
+        glGenBuffers(1, &circle->EBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, circle->EBO);
+        // sequence of triangles in ccw order
+        GLuint indices[NUM_CIRCLE_POINTS * 3] = {};
+        for (int i = 0; i < NUM_CIRCLE_POINTS; ++i)
+        {
+            int start_i = i * 3;
+            // center
+            indices[start_i + 0] = NUM_CIRCLE_POINTS;
+            // current point
+            indices[start_i + 1] = i;
+            // next point, wrapping back to first
+            indices[start_i + 2] = (i + 1) % NUM_CIRCLE_POINTS;
+        }
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    }
+    // unbind the VAO
+    DEBUG_ASSERT(circle->VAO != 0);
+    glBindVertexArray(0);
+}
+
 static void init_line(Line* line)
 {
     // Create and bind VAO
@@ -308,6 +364,7 @@ void rendering_init(GameMemory* game_memory, GameRenderInfo* render_info, float 
     }
 
     init_rect(&global_rect);
+    init_circle(&global_circle);
     init_line(&global_line);
 }
 
@@ -519,6 +576,70 @@ void rendering_draw_line(Vec2 origin, Vec2 point, float width, Color color)
         // draw
         glLineWidth(width);
         glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, 0);
+    }
+    // unbind VAO
+    glBindVertexArray(0);
+}
+
+void rendering_draw_circle(Vec2 pos, f32 radius, Color color)
+{
+    bool wireframe = true;
+    Circle* circle = &global_circle;
+    Shader* shader = &sprite_shader;
+
+    // for each point, we need 3 vertices
+    GLfloat vertices[(NUM_CIRCLE_POINTS + 1) * 3] = {};
+    for (int i = 0; i < NUM_CIRCLE_POINTS; i++)
+    {
+        int start_i = i * 3;
+        f32 rads = 2.0F*M_PI*(f32)i/(f32)NUM_CIRCLE_POINTS;
+        vertices[start_i + 0] = cosf(rads)*radius; // x
+        vertices[start_i + 1] = sinf(rads)*radius; // y
+        vertices[start_i + 2] = 0; // z
+    }
+    // center is 0
+    vertices[(NUM_CIRCLE_POINTS * 3) + 0] = 0;
+    vertices[(NUM_CIRCLE_POINTS * 3) + 1] = 0;
+    vertices[(NUM_CIRCLE_POINTS * 3) + 2] = 0;
+
+    glBindVertexArray(circle->VAO);
+    {
+        // Set vertices
+        glBindBuffer(GL_ARRAY_BUFFER, circle->vertices_VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STREAM_DRAW);
+
+        // Set current shader program
+        glUseProgram(shader->id);
+
+        // Set projection matrix uniform
+        int loc = glGetUniformLocation(shader->id, "projection");
+        glUniformMatrix4fv(loc, 1, GL_FALSE, projection.data);
+
+        // Set view matrix uniform
+        loc = glGetUniformLocation(shader->id, "view");
+        glUniformMatrix4fv(loc, 1, GL_FALSE, view.data);
+
+        loc = glGetUniformLocation(shader->id, "model");
+
+        Mat4 model = Mat4::identity().frame_translate(Vec3(pos, 0.0));
+        glUniformMatrix4fv(loc, 1, GL_FALSE, model.data);
+
+        // color overlay
+        loc = glGetUniformLocation(shader->id, "color_blend");
+        glUniform4f(loc, color.r, color.g, color.b, color.a);
+
+        // draw wireframe
+        if (wireframe)
+        {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        }
+        else
+        {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+
+        // draw
+        glDrawElements(GL_TRIANGLES, NUM_CIRCLE_POINTS * 3, GL_UNSIGNED_INT, 0);
     }
     // unbind VAO
     glBindVertexArray(0);

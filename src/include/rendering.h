@@ -27,6 +27,9 @@ void rendering_set_camera(Vec2 pos);
 /* Pos is centre of rect. Texture is optional, and will be stretched across the rect */
 void rendering_draw_rect(Vec2 pos, Vec2 size, RenderTexture tex, Color color);
 
+/* Pos is centre of circle. color1 and color2 alternate on triangles */
+void rendering_draw_circle(Vec2 pos, f32 radius, Color color);
+
 /* Draw one frame of a sprite sheet */
 /* Pos is centre of rect. Size is in pixels, of one sprite on the texture, used with row and col to crop image */
 void rendering_draw_sprite(Vec2 pos, Vec2 size, RenderTexture tex, uint32_t row, uint32_t col, Color color, bool hflip);
