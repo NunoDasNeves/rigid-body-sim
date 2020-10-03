@@ -7,6 +7,8 @@
 
 Color background_color = Color{0.4F, 0.4F, 0.4F, 1.0F};
 Color grid_color = Color{0.2F, 0.2F, 0.2F, 1.0F};
+Color mouse_force_on_color = Color{1.0F,0.0F,0.0F,1.0F};
+Color mouse_force_off_color = Color{0.1F,0.1F,0.1F,1.0F};
 
 #define GRID_SPACING 0.1F
 
@@ -21,17 +23,43 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
 
     GameInput *last_input = input_buffer->last_input();
     
+    Vec2 mouse_pos = Vec2{999,999};
+    bool mouse_force = false;
     if (last_input->mouse_left_down)
     {
-        Vec2 mouse_pos = rendering_window_pos_to_viewport_pos(last_input->mouse_x, last_input->mouse_y);
+        mouse_pos = rendering_window_pos_to_viewport_pos(last_input->mouse_x, last_input->mouse_y);
     }
     if (last_input->space)// && !input_buffer->prev_frame_input(1)->space)
     {
     }
 
-    /* TODO physics */
-    physics_update(game_state, dt);
+    /* physics */
+    //physics_update(game_state, dt);
+    Obj *objs = game_state->objs;
+    
+    /* slow down */
+    dt *= 0.5;
 
+    for (int i = 0; i < MAX_OBJS; ++i)
+    {
+        Obj *obj = &objs[i];
+        if (!obj->mass || obj->is_static)
+            continue;
+        /* Gravity */
+        //obj->vel.y = obj->vel.y + -9.81F * dt;
+        /* Mouse force */
+        Vec2 m_force = obj->pos - mouse_pos;
+        if (m_force.length() > MAX(obj->width, obj->height) / 2.0F)
+            m_force = Vec2{0,0};
+        else
+            mouse_force = true;
+        /* Integrate */
+        //obj->vel = obj->vel + (obj->accel * dt);
+        obj->pos = obj->pos + (obj->vel * dt);
+    }
+
+
+    /* rendering */
     rendering_clear_screen(render_info, background_color);
     rendering_set_camera(game_state->camera_pos);
 
@@ -66,7 +94,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             case Obj::Circle:
                 rendering_draw_circle(
                     obj->pos,
-                    obj->width,
+                    obj->width / 2.0F,
                     obj_color,
                     obj_wireframe);
                 break;
@@ -80,6 +108,13 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                 break;
         }
     }
+
+    /* mouse force */
+    rendering_draw_circle(
+                    mouse_pos,
+                    0.01,
+                    mouse_force ? mouse_force_on_color : mouse_force_off_color,
+                    false);
 }
 
 void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
@@ -91,7 +126,7 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     GameMemoryBlock* block = (GameMemoryBlock*)(game_memory->memory);
     GameState* game_state = &block->game_state;
 
-    game_state->objs[0] = Obj{1, 0.2F, 0.2F, Vec2(0.5F,0.0F), Obj::Circle, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
-    game_state->objs[1] = Obj{1, 0.2F, 0.1F, Vec2(-0.5F,0.0F), Obj::Rect, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
+    game_state->objs[0] = Obj{1, 0.4F, 0.0F, Vec2(0.5F,0.0F), Obj::Circle, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
+    game_state->objs[1] = Obj{1, 0.3F, 0.2F, Vec2(-0.5F,0.0F), Obj::Rect, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
     game_state->objs[2] = Obj{1, 1.5F, 0.2F, Vec2(0.0F,-0.6F), Obj::Rect, true};
 }

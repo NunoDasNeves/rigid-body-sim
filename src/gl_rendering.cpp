@@ -399,9 +399,10 @@ void rendering_clear_screen(GameRenderInfo* render_info, Color color)
 
 Vec2 rendering_window_pos_to_viewport_pos(int x, int y)
 {
-    float game_pixels_per_window_pixel = (float)GAME_WIDTH_PX/(float)gl_viewport_width;
+    float rescale_factor = 2.0F / (float)gl_viewport_width; // window pixels to game units
+    Vec2 rescale_offset = Vec2{-1.0F, -1.0F};
 
-    return Vec2((float)(x - gl_viewport_x), (float)(y - gl_viewport_y)) * game_pixels_per_window_pixel;
+    return Vec2((float)(x - gl_viewport_x), (float)(y - gl_viewport_y)) * rescale_factor + rescale_offset;
 }
 
 void rendering_set_camera(Vec2 pos)
