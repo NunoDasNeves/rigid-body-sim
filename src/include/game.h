@@ -2,34 +2,32 @@
 #include"linear_algebra.h"
 #include"game_math.h"
 
-#define MAX_DYN_OBJS 128
+#define MAX_OBJS 128
 
-struct DynObj {
+struct Obj {
     f32 mass; // if 0, no obj
 
     f32 width;
-    f32 height;
+    f32 height; // ignored for circle
 
     Vec2 pos;
-    Vec2 vel;
-    Vec2 accel;
-    Vec2 alpha; // angular momentum
+
     enum {
         Circle,
         Rect,
     } shape;
-};
 
-struct StaticRect {
-    Vec2 pos;
-    f32 width;
-    f32 height;
+    bool is_static;
+
+    Vec2 vel;
+    Vec2 accel;
+    Vec2 alpha; // angular momentum
 };
 
 struct GameState
 {
     Vec2 camera_pos;
-    DynObj dyn_objs[MAX_DYN_OBJS];
+    Obj objs[MAX_OBJS];
 };
 
 void render_game(GameState* game_state);

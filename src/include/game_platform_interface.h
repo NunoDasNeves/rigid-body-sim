@@ -79,10 +79,10 @@ void DEBUG_platform_free_file_memory(void *memory);
 
 struct GameMemory
 {
+    void* (*platform_gl_get_proc_address)(const char*);
+
     unsigned memory_size;
     void* memory;
-
-    void* (*platform_gl_get_proc_address)(const char*);
 };
 
 void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info);

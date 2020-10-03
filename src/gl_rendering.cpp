@@ -482,7 +482,7 @@ void draw_rect(Vec2 pos, Vec2 size, Texture* tex, GLfloat* tex_coords, Color col
     glBindVertexArray(0);
 }
 
-void rendering_draw_rect(Vec2 pos, Vec2 size, RenderTexture tex, Color color)
+void rendering_draw_rect(Vec2 pos, Vec2 size, RenderTexture tex, Color color, bool wireframe)
 {
     Texture* texture = (Texture*)tex;
     if (!texture)
@@ -493,7 +493,7 @@ void rendering_draw_rect(Vec2 pos, Vec2 size, RenderTexture tex, Color color)
     {
         DEBUG_ASSERT(texture->initialized);
     }
-    draw_rect(pos, size, texture, (GLfloat*)RECT_DEFAULT_TEX_COORDS, color, true);
+    draw_rect(pos, size, texture, (GLfloat*)RECT_DEFAULT_TEX_COORDS, color, wireframe);
 }
 
 void rendering_draw_sprite(Vec2 pos, Vec2 size, RenderTexture tex, uint32_t row, uint32_t col, Color color, bool hflip)
@@ -581,9 +581,8 @@ void rendering_draw_line(Vec2 origin, Vec2 point, float width, Color color)
     glBindVertexArray(0);
 }
 
-void rendering_draw_circle(Vec2 pos, f32 radius, Color color)
+void rendering_draw_circle(Vec2 pos, f32 radius, Color color, bool wireframe)
 {
-    bool wireframe = true;
     Circle* circle = &global_circle;
     Shader* shader = &sprite_shader;
 

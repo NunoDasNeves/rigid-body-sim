@@ -5,7 +5,7 @@
 #include"game.h"
 #include"rendering.h"
 
-Color background_color = Color{0.5F, 0.5F, 1.0F, 1.0F};
+Color background_color = Color{0.4F, 0.4F, 0.4F, 1.0F};
 Color grid_color = Color{0.2F, 0.2F, 0.2F, 1.0F};
 
 #define GRID_SPACING 0.1
@@ -47,25 +47,33 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             grid_color);
     }
 
-    for (int i = 0; i < MAX_DYN_OBJS; ++i)
+    for (int i = 0; i < MAX_OBJS; ++i)
     {
-        DynObj *obj = &game_state->dyn_objs[i];
+        Obj *obj = &game_state->objs[i];
         if (!obj->mass)
             continue;
+        Color obj_color = Color{0.5,0.8,0.5,1.0};
+        bool obj_wireframe = true;
+        if (obj->is_static) {
+            obj_color = Color{0.6,0.6,0.6,1.0};
+            obj_wireframe = false;
+        }
         switch(obj->shape)
         {
-            case DynObj::Circle:
+            case Obj::Circle:
                 rendering_draw_circle(
                     obj->pos,
                     obj->width,
-                    Color{1,1,1,1.0F});
+                    obj_color,
+                    obj_wireframe);
                 break;
-            case DynObj::Rect:
+            case Obj::Rect:
                 rendering_draw_rect(
                     obj->pos,
                     Vec2(obj->width, obj->height),
                     NULL,
-                    Color{1,1,1,1.0F});
+                    obj_color,
+                    obj_wireframe);
                 break;
         }
     }
@@ -80,6 +88,7 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     GameMemoryBlock* block = (GameMemoryBlock*)(game_memory->memory);
     GameState* game_state = &block->game_state;
 
-    game_state->dyn_objs[0] = DynObj{1, 0.2, 0.2, Vec2(0.5,0), Vec2(0,0), Vec2(0,0), Vec2(0,0), DynObj::Circle};
-    game_state->dyn_objs[1] = DynObj{1, 0.2, 0.1, Vec2(-0.5,0), Vec2(0,0), Vec2(0,0), Vec2(0,0), DynObj::Rect};
+    game_state->objs[0] = Obj{1, 0.2, 0.2, Vec2(0.5,0), Obj::Circle, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
+    game_state->objs[1] = Obj{1, 0.2, 0.1, Vec2(-0.5,0), Obj::Rect, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
+    game_state->objs[2] = Obj{1, 1.5, 0.2, Vec2(0.0,-0.6), Obj::Rect, true};
 }
