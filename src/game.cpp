@@ -38,7 +38,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     Obj *objs = game_state->objs;
     
     /* slow down */
-    dt *= 0.5;
+    dt *= 0.8F;
 
     for (int i = 0; i < MAX_OBJS; ++i)
     {
@@ -49,12 +49,16 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         //obj->vel.y = obj->vel.y + -9.81F * dt;
         /* Mouse force */
         Vec2 m_force = obj->pos - mouse_pos;
-        if (m_force.length() > MAX(obj->width, obj->height) / 2.0F)
-            m_force = Vec2{0,0};
-        else
+        if (m_force.length() < MAX(obj->width, obj->height) / 2.0F)
+        {
+            /* scale length on constant factor */
+            const f32 m_force_scale = 5.0F;
+            m_force = m_force.normalized() * (m_force.length() / (MAX(obj->width, obj->height) / 2.0F)) * m_force_scale;
+            obj->vel = obj->vel + (m_force * dt);
             mouse_force = true;
+        }
+
         /* Integrate */
-        //obj->vel = obj->vel + (obj->accel * dt);
         obj->pos = obj->pos + (obj->vel * dt);
     }
 
@@ -112,7 +116,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     /* mouse force */
     rendering_draw_circle(
                     mouse_pos,
-                    0.01,
+                    0.01F,
                     mouse_force ? mouse_force_on_color : mouse_force_off_color,
                     false);
 }
