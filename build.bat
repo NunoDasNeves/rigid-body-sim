@@ -47,6 +47,6 @@ IF NOT EXIST SDL2.dll copy %SDL_DIR%\lib\x64\SDL2.dll .
 IF EXIST %EXE_NAME% del %EXE_NAME%
 
 :: Build executable
-cl %SRC_DIR%\sdl_main.cpp %SRC_DIR%\game.cpp %SRC_DIR%\gl_rendering.cpp %SRC_DIR%\math.cpp %SRC_DIR%\glad.c %COMMON_COMPILER_FLAGS% %ADDITIONAL_FLAGS% /link %COMMON_LINKER_FLAGS%
+cl %SRC_DIR%\sdl_main.cpp %SRC_DIR%\game.cpp %SRC_DIR%\gl_rendering.cpp %SRC_DIR%\physics.cpp %SRC_DIR%\math.cpp %SRC_DIR%\glad.c %COMMON_COMPILER_FLAGS% %ADDITIONAL_FLAGS% /link %COMMON_LINKER_FLAGS%
 
 cd ..

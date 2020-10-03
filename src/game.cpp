@@ -8,7 +8,7 @@
 Color background_color = Color{0.4F, 0.4F, 0.4F, 1.0F};
 Color grid_color = Color{0.2F, 0.2F, 0.2F, 1.0F};
 
-#define GRID_SPACING 0.1
+#define GRID_SPACING 0.1F
 
 void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buffer, GameRenderInfo* render_info)
 {
@@ -28,6 +28,9 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     if (last_input->space)// && !input_buffer->prev_frame_input(1)->space)
     {
     }
+
+    /* TODO physics */
+    physics_update(game_state, dt);
 
     rendering_clear_screen(render_info, background_color);
     rendering_set_camera(game_state->camera_pos);
@@ -52,10 +55,10 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         Obj *obj = &game_state->objs[i];
         if (!obj->mass)
             continue;
-        Color obj_color = Color{0.5,0.8,0.5,1.0};
+        Color obj_color = Color{0.5F,0.8F,0.5F,1.0F};
         bool obj_wireframe = true;
         if (obj->is_static) {
-            obj_color = Color{0.6,0.6,0.6,1.0};
+            obj_color = Color{0.6F,0.6F,0.6F,1.0F};
             obj_wireframe = false;
         }
         switch(obj->shape)
@@ -88,7 +91,7 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     GameMemoryBlock* block = (GameMemoryBlock*)(game_memory->memory);
     GameState* game_state = &block->game_state;
 
-    game_state->objs[0] = Obj{1, 0.2, 0.2, Vec2(0.5,0), Obj::Circle, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
-    game_state->objs[1] = Obj{1, 0.2, 0.1, Vec2(-0.5,0), Obj::Rect, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
-    game_state->objs[2] = Obj{1, 1.5, 0.2, Vec2(0.0,-0.6), Obj::Rect, true};
+    game_state->objs[0] = Obj{1, 0.2F, 0.2F, Vec2(0.5F,0.0F), Obj::Circle, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
+    game_state->objs[1] = Obj{1, 0.2F, 0.1F, Vec2(-0.5F,0.0F), Obj::Rect, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
+    game_state->objs[2] = Obj{1, 1.5F, 0.2F, Vec2(0.0F,-0.6F), Obj::Rect, true};
 }

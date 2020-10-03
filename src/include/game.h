@@ -30,7 +30,7 @@ struct GameState
     Obj objs[MAX_OBJS];
 };
 
-void render_game(GameState* game_state);
+void physics_update(GameState *game_state, f32 dt);
 
 // Just for destructuring game memory buffer
 struct GameMemoryBlock
