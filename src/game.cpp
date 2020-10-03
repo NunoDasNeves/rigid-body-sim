@@ -23,14 +23,24 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
 
     GameInput *last_input = input_buffer->last_input();
     
-    Vec2 mouse_pos = Vec2{999,999};
-    bool mouse_force = false;
+    bool mouse_force_on = false;
+    Vec2 mouse_pos = rendering_window_pos_to_viewport_pos(last_input->mouse_x, last_input->mouse_y);
+    bool mouse_released = false;
     if (last_input->mouse_left_down)
     {
-        mouse_pos = rendering_window_pos_to_viewport_pos(last_input->mouse_x, last_input->mouse_y);
+        if (!game_state->mouse_dragging)
+        {
+            game_state->mouse_dragging = true;
+            game_state->mouse_force_origin = mouse_pos;
+        }
     }
-    if (last_input->space)// && !input_buffer->prev_frame_input(1)->space)
+    else
     {
+        if (game_state->mouse_dragging)
+        {
+            game_state->mouse_dragging = false;
+            mouse_released = true;
+        }
     }
 
     /* physics */
@@ -48,14 +58,18 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         /* Gravity */
         //obj->vel.y = obj->vel.y + -9.81F * dt;
         /* Mouse force */
-        Vec2 m_force = obj->pos - mouse_pos;
-        if (m_force.length() < MAX(obj->width, obj->height) / 2.0F)
+        Vec2 mouse_to_obj = obj->pos - mouse_pos;
+        if (mouse_to_obj.length() < MAX(obj->width, obj->height) / 2.0F)
         {
-            /* scale length on constant factor */
-            const f32 m_force_scale = 5.0F;
-            m_force = m_force.normalized() * (m_force.length() / (MAX(obj->width, obj->height) / 2.0F)) * m_force_scale;
-            obj->vel = obj->vel + (m_force * dt);
-            mouse_force = true;
+            mouse_force_on = true;
+            if (mouse_released)
+            {
+                /* scale length on constant factor */
+                static const f32 m_force_scale = 10.0F;
+                Vec2 m_force = mouse_pos - game_state->mouse_force_origin;
+                m_force = m_force.normalized() * m_force_scale;
+                obj->vel = obj->vel + (m_force * dt);
+            }
         }
 
         /* Integrate */
@@ -114,11 +128,19 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     }
 
     /* mouse force */
-    rendering_draw_circle(
+    if (game_state->mouse_dragging)
+    {
+        rendering_draw_line(
+                    game_state->mouse_force_origin,
+                    mouse_pos - game_state->mouse_force_origin,
+                    2,
+                    mouse_force_on ? mouse_force_on_color : mouse_force_off_color);
+        rendering_draw_circle(
                     mouse_pos,
                     0.01F,
-                    mouse_force ? mouse_force_on_color : mouse_force_off_color,
+                    mouse_force_on ? mouse_force_on_color : mouse_force_off_color,
                     false);
+    }
 }
 
 void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)

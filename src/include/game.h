@@ -28,6 +28,11 @@ struct GameState
 {
     Vec2 camera_pos;
     Obj objs[MAX_OBJS];
+
+    /* Physics */
+    //Obj p_coll_pairs[MAX_OBJS * MAX_OBJS][2]; // potential
+    Vec2 mouse_force_origin;
+    bool mouse_dragging;
 };
 
 void physics_update(GameState *game_state, f32 dt);
