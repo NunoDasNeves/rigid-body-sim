@@ -72,7 +72,8 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                 static const f32 m_force_scale = 30.0F;
                 Vec2 m_force = mouse_pos - game_state->mouse_force_origin;
                 m_force = m_force * m_force_scale;
-                obj->torque = obj->torque + (mouse_to_obj.x * m_force.y + mouse_to_obj.y * m_force.x);
+                Vec2 obj_to_mouse = mouse_to_obj * -1.0F;
+                obj->torque = obj->torque + (obj_to_mouse.x * m_force.y - obj_to_mouse.y * m_force.x);
                 obj->force = obj->force + m_force;
             }
         }
@@ -80,6 +81,8 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         /* Integrate */
         obj->vel = obj->vel + ((obj->force / obj->mass) * dt);
         obj->pos = obj->pos + (obj->vel * dt);
+        obj->alpha = obj->alpha + ((obj->torque / obj->inertia) * dt);
+        obj->rot = obj->rot + obj->alpha * dt;
     }
 
 

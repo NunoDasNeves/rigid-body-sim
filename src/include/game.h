@@ -22,7 +22,7 @@ struct Obj {
     f32 mass;
     f32 inertia;
     Vec2 vel;
-    Vec2 alpha; // angular_vel
+    f32 alpha; // angular_vel
     Vec2 force;
     f32 torque;
 
