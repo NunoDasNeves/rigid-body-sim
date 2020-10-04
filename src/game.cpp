@@ -195,10 +195,48 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             }
         }
     }
-    /* TODO narrow phase - produce pairs of colliding objects */
+    /* narrow phase - produce pairs of colliding objects */
+    u32 coll_num = 0;
     for (u32 i = 0; i < p_coll_num; ++i)
     {
+        Obj **obj_pair = game_state->p_coll_pairs[i];
+        /* Order by shape, i.e. swap if rect is first in the pair */
+        if (obj_pair[1]->shape == Obj::Circle)
+        {
+            Obj *tmp = obj_pair[0];
+            obj_pair[0] = obj_pair[1];
+            obj_pair[1] = tmp;
+        }
 
+        /* Now we have 3 cases: circle/circle, circle/rect, rect/rect */
+        bool colliding = false;
+        Vec2 obj2obj = obj_pair[1]->pos - obj_pair[0]->pos;
+
+        /* Rect/Rect */
+        if (obj_pair[0]->shape == Obj::Rect)
+        {
+            /* TODO */
+        }
+        /* Circle/Rect */
+        else if (obj_pair[1]->shape == Obj::Rect)
+        {
+            /* TODO */
+        }
+        /* Circle/Circle */
+        else
+        {
+            if (obj2obj.length() < (obj_pair[0]->radius + obj_pair[1]->radius))
+            {
+                colliding = true;
+            }
+        }
+
+        if (colliding)
+        {
+            game_state->coll_pairs[coll_num][0] = obj_pair[0];
+            game_state->coll_pairs[coll_num][1] = obj_pair[1];
+            coll_num++;
+        }
     }
 
     /* rendering */
@@ -255,6 +293,41 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     }
 
     /* draw physics stuff */
+    /* actual collisions */
+    for (u32 i = 0; i < coll_num; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            Obj *obj = game_state->coll_pairs[i][j];
+            Color obj_color = Color{0.6F,0.9F,0.6F,1.0F};
+            bool obj_wireframe = true;
+            if (obj->is_static) {
+                obj_color = Color{0.7F,0.7F,0.7F,1.0F};
+                obj_wireframe = false;
+            }
+            switch(obj->shape)
+            {
+                case Obj::Circle:
+                    rendering_draw_circle(
+                        obj->pos,
+                        obj->rot,
+                        obj->radius,
+                        obj_color,
+                        obj_wireframe);
+                    break;
+                case Obj::Rect:
+                    rendering_draw_rect(
+                        obj->pos,
+                        obj->rot,
+                        Vec2(obj->width, obj->height),
+                        NULL,
+                        obj_color,
+                        obj_wireframe);
+                    break;
+            }
+        }
+    }
+
     /* aabbs */
     for (int i = 0; i < MAX_OBJS; ++i)
     {
@@ -300,4 +373,5 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     game_state->objs[0] = Obj::dyn_circle(0.4F, Vec2(0.5F,0.0F), 1);
     game_state->objs[1] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,0.0F), M_PI / 4.0F, 1);
     game_state->objs[2] = Obj::static_rect(1.5F, 0.2F, Vec2(0.0F,-0.6F), 0);
+    game_state->objs[3] = Obj::static_circle(0.3F, Vec2(0.0F,0.6F));
 }
