@@ -294,6 +294,16 @@ struct Mat4
         return ret;
     }
 
+    Mat4 frame_rotate_z(f32 theta)
+    {
+        float r_mat_data[] = {cosf(theta),  sinf(theta), 0, 0,
+                              -sinf(theta), cosf(theta), 0, 0,
+                              0,            0,           1, 0,
+                              0,            0,           0, 1};
+        Mat4 rotation_matrix(r_mat_data);
+        return *this * rotation_matrix;
+    }
+
     void debug_print()
     {
         // print in normal looking way..not how data is layed out

@@ -410,7 +410,7 @@ void rendering_set_camera(Vec2 pos)
     view = Mat4::identity().frame_translate(Vec3(pos * (-1.0F), 0.0F));
 }
 
-void draw_rect(Vec2 pos, Vec2 size, Texture* tex, GLfloat* tex_coords, Color color, bool wireframe)
+void draw_rect(Vec2 pos, f32 rot, Vec2 size, Texture* tex, GLfloat* tex_coords, Color color, bool wireframe)
 {
     Rect* rect = &global_rect;
     Shader* shader = &sprite_shader;
@@ -451,7 +451,7 @@ void draw_rect(Vec2 pos, Vec2 size, Texture* tex, GLfloat* tex_coords, Color col
 
         loc = glGetUniformLocation(shader->id, "model");
 
-        Mat4 model = Mat4::identity().frame_translate(Vec3(pos, 0.0));
+        Mat4 model = Mat4::identity().frame_translate(Vec3(pos, 0.0)).frame_rotate_z(rot);
         glUniformMatrix4fv(loc, 1, GL_FALSE, model.data);
 
         // Set texture uniform
@@ -483,7 +483,7 @@ void draw_rect(Vec2 pos, Vec2 size, Texture* tex, GLfloat* tex_coords, Color col
     glBindVertexArray(0);
 }
 
-void rendering_draw_rect(Vec2 pos, Vec2 size, RenderTexture tex, Color color, bool wireframe)
+void rendering_draw_rect(Vec2 pos, f32 rot, Vec2 size, RenderTexture tex, Color color, bool wireframe)
 {
     Texture* texture = (Texture*)tex;
     if (!texture)
@@ -494,7 +494,7 @@ void rendering_draw_rect(Vec2 pos, Vec2 size, RenderTexture tex, Color color, bo
     {
         DEBUG_ASSERT(texture->initialized);
     }
-    draw_rect(pos, size, texture, (GLfloat*)RECT_DEFAULT_TEX_COORDS, color, wireframe);
+    draw_rect(pos, rot, size, texture, (GLfloat*)RECT_DEFAULT_TEX_COORDS, color, wireframe);
 }
 
 void rendering_draw_sprite(Vec2 pos, Vec2 size, RenderTexture tex, uint32_t row, uint32_t col, Color color, bool hflip)
@@ -528,7 +528,7 @@ void rendering_draw_sprite(Vec2 pos, Vec2 size, RenderTexture tex, uint32_t row,
         bottom_left_y
     };
 
-    draw_rect(pos, size, texture, texture_coords, color, false);
+    draw_rect(pos, 0, size, texture, texture_coords, color, false);
 }
 
 void rendering_draw_line(Vec2 origin, Vec2 point, float width, Color color)
@@ -582,7 +582,7 @@ void rendering_draw_line(Vec2 origin, Vec2 point, float width, Color color)
     glBindVertexArray(0);
 }
 
-void rendering_draw_circle(Vec2 pos, f32 radius, Color color, bool wireframe)
+void rendering_draw_circle(Vec2 pos, f32 rot, f32 radius, Color color, bool wireframe)
 {
     Circle* circle = &global_circle;
     Shader* shader = &sprite_shader;
@@ -621,7 +621,7 @@ void rendering_draw_circle(Vec2 pos, f32 radius, Color color, bool wireframe)
 
         loc = glGetUniformLocation(shader->id, "model");
 
-        Mat4 model = Mat4::identity().frame_translate(Vec3(pos, 0.0));
+        Mat4 model = Mat4::identity().frame_translate(Vec3(pos, 0.0)).frame_rotate_z(rot);
         glUniformMatrix4fv(loc, 1, GL_FALSE, model.data);
 
         // color overlay

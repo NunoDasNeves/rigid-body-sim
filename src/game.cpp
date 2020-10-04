@@ -118,6 +118,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             case Obj::Circle:
                 rendering_draw_circle(
                     obj->pos,
+                    obj->rot,
                     obj->width / 2.0F,
                     obj_color,
                     obj_wireframe);
@@ -125,6 +126,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             case Obj::Rect:
                 rendering_draw_rect(
                     obj->pos,
+                    obj->rot,
                     Vec2(obj->width, obj->height),
                     NULL,
                     obj_color,
@@ -143,6 +145,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                     mouse_force_on ? mouse_force_on_color : mouse_force_off_color);
         rendering_draw_circle(
                     mouse_pos,
+                    0,
                     0.01F,
                     mouse_force_on ? mouse_force_on_color : mouse_force_off_color,
                     false);

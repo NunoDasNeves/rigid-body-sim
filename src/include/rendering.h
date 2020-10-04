@@ -25,10 +25,10 @@ void rendering_clear_screen(GameRenderInfo* render_info, Color color);
 void rendering_set_camera(Vec2 pos);
 
 /* Pos is centre of rect. Texture is optional, and will be stretched across the rect */
-void rendering_draw_rect(Vec2 pos, Vec2 size, RenderTexture tex, Color color, bool wireframe);
+void rendering_draw_rect(Vec2 pos, f32 rot, Vec2 size, RenderTexture tex, Color color, bool wireframe);
 
 /* Pos is centre of circle. color1 and color2 alternate on triangles */
-void rendering_draw_circle(Vec2 pos, f32 radius, Color color, bool wireframe);
+void rendering_draw_circle(Vec2 pos, f32 rot, f32 radius, Color color, bool wireframe);
 
 /* Draw one frame of a sprite sheet */
 /* Pos is centre of rect. Size is in pixels, of one sprite on the texture, used with row and col to crop image */
