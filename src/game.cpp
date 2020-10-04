@@ -9,8 +9,68 @@ Color background_color = Color{0.4F, 0.4F, 0.4F, 1.0F};
 Color grid_color = Color{0.2F, 0.2F, 0.2F, 1.0F};
 Color mouse_force_on_color = Color{1.0F,0.0F,0.0F,1.0F};
 Color mouse_force_off_color = Color{0.1F,0.1F,0.1F,1.0F};
+Color aabb_color = Color{1.0F,0.0F,0.0F,1.0F};
 
 #define GRID_SPACING 0.1F
+
+void AABB::draw()
+{
+    Vec2 extent = this->max - this->min;
+    rendering_draw_line(
+                    this->min,
+                    Vec2(extent.x, 0),
+                    1,
+                    aabb_color);
+    rendering_draw_line(
+                    this->min,
+                    Vec2(0, extent.y),
+                    1,
+                    aabb_color);
+    rendering_draw_line(
+                    this->max,
+                    Vec2(-extent.x, 0),
+                    1,
+                    aabb_color);
+    rendering_draw_line(
+                    this->max,
+                    Vec2(0, -extent.y),
+                    1,
+                    aabb_color);
+}
+
+void Obj::update_aabb()
+{
+    switch(this->shape)
+    {
+        case Obj::Circle:
+            this->aabb.min = this->pos - Vec2(this->radius, this->radius);
+            this->aabb.max = this->pos + Vec2(this->radius, this->radius);
+            break;
+        case Obj::Rect:
+        {
+            Vec2 verts[] = {
+                Vec2(-this->width, -this->height) / 2.0F,
+                Vec2(-this->width, this->height) / 2.0F,
+                Vec2(this->width, this->height) / 2.0F,
+                Vec2(this->width, -this->height) / 2.0F,
+            };
+
+            this->aabb.min = this->pos;
+            this->aabb.max = this->pos;
+            for (int i = 0; i < 4; ++i)
+            {
+                Mat4 model = Mat4::identity().frame_translate(Vec3(this->pos, 0.0)).frame_rotate_z(this->rot);
+                Vec4 point4 = model * Vec4(verts[i], 0, 1);
+                Vec2 point = Vec2(point4.x, point4.y);
+                this->aabb.min.x = MIN(point.x, this->aabb.min.x);
+                this->aabb.min.y = MIN(point.y, this->aabb.min.y);
+                this->aabb.max.x = MAX(point.x, this->aabb.max.x);
+                this->aabb.max.y = MAX(point.y, this->aabb.max.y);
+            }
+            break;
+        }
+    }
+}
 
 void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buffer, GameRenderInfo* render_info)
 {
@@ -86,6 +146,18 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         obj->rot = obj->rot + obj->alpha * dt;
     }
 
+    /* physics - collision detection */
+    /* broad phase - compute AABBs */
+    for (int i = 0; i < MAX_OBJS; ++i)
+    {
+        Obj *obj = &objs[i];
+        if (!obj->exists || obj->is_static)
+            continue;
+        obj->update_aabb();
+    };
+    /* broad phase - produce pairs of potentially colliding objects */
+
+
 
     /* rendering */
     rendering_clear_screen(render_info, background_color);
@@ -138,6 +210,16 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                     obj_wireframe);
                 break;
         }
+    }
+
+    /* draw physics stuff */
+    /* aabbs */
+    for (int i = 0; i < MAX_OBJS; ++i)
+    {
+        Obj *obj = &game_state->objs[i];
+        if (!obj->exists)
+            continue;
+        obj->aabb.draw();
     }
 
     /* mouse force */

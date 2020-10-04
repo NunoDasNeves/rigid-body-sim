@@ -97,6 +97,7 @@ struct Vec4
 
     Vec4() : x(0.0F), y(0.0F), z(0.0F), w(0.0F) {}
     Vec4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+    Vec4(Vec2 v2, float z, float w) : x(v2.x), y(v2.y), z(z), w(w) {}
     ~Vec4(){}
 
     Vec4 operator+(const Vec4& v)

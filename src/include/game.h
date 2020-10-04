@@ -4,6 +4,12 @@
 
 #define MAX_OBJS 128
 
+struct AABB {
+    Vec2 min;
+    Vec2 max;
+    void draw();
+};
+
 struct Obj {
     union {
         u32 exists;
@@ -22,6 +28,8 @@ struct Obj {
 
     bool is_static;
 
+    AABB aabb;
+
     /* Static objects have none of these: */
     f32 mass;
     f32 inertia;
@@ -38,6 +46,7 @@ struct Obj {
         obj.shape = Circle;
         obj.mass = mass;
         obj.inertia = 0.5F * mass * radius * radius;
+        obj.update_aabb();
         return obj;
     }
     static Obj dyn_rect(f32 width, f32 height, Vec2 pos, f32 rot, f32 mass)
@@ -50,6 +59,7 @@ struct Obj {
         obj.shape = Rect;
         obj.mass = mass;
         obj.inertia = (1.0F/12.0F) * mass * (height * height + width * width);
+        obj.update_aabb();
         return obj;
     }
     static Obj static_circle(f32 radius, Vec2 pos)
@@ -59,6 +69,7 @@ struct Obj {
         obj.pos = pos;
         obj.shape = Circle;
         obj.is_static = true;
+        obj.update_aabb();
         return obj;
     }
     static Obj static_rect(f32 width, f32 height, Vec2 pos, f32 rot)
@@ -70,9 +81,11 @@ struct Obj {
         obj.rot = rot;
         obj.shape = Rect;
         obj.is_static = true;
+        obj.update_aabb();
         return obj;
     }
 
+    void update_aabb();
 };
 
 struct GameState
