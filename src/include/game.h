@@ -5,7 +5,11 @@
 #define MAX_OBJS 128
 
 struct Obj {
-    f32 width; // if 0, no obj. diameter for circle
+    union {
+        u32 exists;
+        f32 width;
+        f32 radius;
+    };
     f32 height; // ignored for circle
 
     Vec2 pos;
@@ -28,26 +32,47 @@ struct Obj {
 
     static Obj dyn_circle(f32 radius, Vec2 pos, f32 mass)
     {
-        return Obj {
-            radius * 2.0F, 0, pos, 0, Circle, false, mass,
-            0.5F * mass * radius * radius // inertia
-            };
+        Obj obj = {};
+        obj.radius = radius;
+        obj.pos = pos;
+        obj.shape = Circle;
+        obj.mass = mass;
+        obj.inertia = 0.5F * mass * radius * radius;
+        return obj;
     }
     static Obj dyn_rect(f32 width, f32 height, Vec2 pos, f32 rot, f32 mass)
     {
-        return Obj {
-            width, height, pos, rot, Rect, false, mass,
-            (1.0F/12.0F) * mass * (height * height + width * width) // inertia
-            };
+        Obj obj = {};
+        obj.width = width;
+        obj.height = height;
+        obj.pos = pos;
+        obj.rot = rot;
+        obj.shape = Rect;
+        obj.mass = mass;
+        obj.inertia = (1.0F/12.0F) * mass * (height * height + width * width);
+        return obj;
     }
     static Obj static_circle(f32 radius, Vec2 pos)
     {
-        return Obj { radius * 2.0F, 0, pos, 0, Circle, true };
+        Obj obj = {};
+        obj.radius = radius;
+        obj.pos = pos;
+        obj.shape = Circle;
+        obj.is_static = true;
+        return obj;
     }
     static Obj static_rect(f32 width, f32 height, Vec2 pos, f32 rot)
     {
-        return Obj { width, height, pos, rot, Rect, true };
+        Obj obj = {};
+        obj.width = width;
+        obj.height = height;
+        obj.pos = pos;
+        obj.rot = rot;
+        obj.shape = Rect;
+        obj.is_static = true;
+        return obj;
     }
+
 };
 
 struct GameState

@@ -43,8 +43,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         }
     }
 
-    /* physics */
-    //physics_update(game_state, dt);
+    /* physics - apply forces*/
     Obj *objs = game_state->objs;
     
     /* slow down */
@@ -53,7 +52,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     for (int i = 0; i < MAX_OBJS; ++i)
     {
         Obj *obj = &objs[i];
-        if (!obj->width || obj->is_static)
+        if (!obj->exists || obj->is_static)
             continue;
 
         /* Compute forces */
@@ -63,7 +62,9 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         //obj->vel.y = obj->vel.y + -9.81F * dt;
         /* Mouse force */
         Vec2 mouse_to_obj = obj->pos - mouse_pos;
-        if (mouse_to_obj.length() < MAX(obj->width, obj->height) / 2.0F)
+        /* TODO this check is hacky, redo */
+        f32 radius_mouse_check = obj->shape == Obj::Rect ? MAX(obj->width, obj->height) / 2.0F : obj->radius;
+        if (mouse_to_obj.length() < radius_mouse_check)
         {
             mouse_force_on = true;
             if (mouse_released)
@@ -105,10 +106,11 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             grid_color);
     }
 
+    /* objects */
     for (int i = 0; i < MAX_OBJS; ++i)
     {
         Obj *obj = &game_state->objs[i];
-        if (!obj->width)
+        if (!obj->exists)
             continue;
         Color obj_color = Color{0.5F,0.8F,0.5F,1.0F};
         bool obj_wireframe = true;
@@ -122,7 +124,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                 rendering_draw_circle(
                     obj->pos,
                     obj->rot,
-                    obj->width / 2.0F,
+                    obj->radius,
                     obj_color,
                     obj_wireframe);
                 break;
