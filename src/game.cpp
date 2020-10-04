@@ -13,29 +13,48 @@ Color aabb_color = Color{1.0F,0.0F,0.0F,1.0F};
 
 #define GRID_SPACING 0.1F
 
-void AABB::draw()
+bool AABB::intersects(AABB other)
 {
+    if (this->min.x > other.max.x || this->max.x < other.min.x)
+    {
+        return false;
+    }
+    if (this->min.y > other.max.y || this->max.y < other.min.y)
+    {
+        return false;
+    }
+    return true;
+}
+
+void AABB::draw(bool intersecting)
+{
+    Color color = aabb_color;
+    if (!intersecting)
+    {
+        color.r = 0.7F;
+    }
+
     Vec2 extent = this->max - this->min;
     rendering_draw_line(
                     this->min,
                     Vec2(extent.x, 0),
                     1,
-                    aabb_color);
+                    color);
     rendering_draw_line(
                     this->min,
                     Vec2(0, extent.y),
                     1,
-                    aabb_color);
+                    color);
     rendering_draw_line(
                     this->max,
                     Vec2(-extent.x, 0),
                     1,
-                    aabb_color);
+                    color);
     rendering_draw_line(
                     this->max,
                     Vec2(0, -extent.y),
                     1,
-                    aabb_color);
+                    color);
 }
 
 void Obj::update_aabb()
@@ -154,10 +173,33 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         if (!obj->exists || obj->is_static)
             continue;
         obj->update_aabb();
-    };
+    }
     /* broad phase - produce pairs of potentially colliding objects */
+    /* brute forceee */
+    u32 p_coll_num = 0;
+    for (int i = 0; i < MAX_OBJS; ++i)
+    {
+        Obj *objA = &objs[i];
+        if (!objA->exists)
+            continue;
+        for (int j = i + 1; j < MAX_OBJS; ++j)
+        {
+            Obj *objB = &objs[j];
+            if (!objB->exists)
+                continue;
+            if (objA->aabb.intersects(objB->aabb))
+            {
+                game_state->p_coll_pairs[p_coll_num][0] = objA;
+                game_state->p_coll_pairs[p_coll_num][1] = objB;
+                p_coll_num++;
+            }
+        }
+    }
+    /* TODO narrow phase - produce pairs of colliding objects */
+    for (u32 i = 0; i < p_coll_num; ++i)
+    {
 
-
+    }
 
     /* rendering */
     rendering_clear_screen(render_info, background_color);
@@ -219,7 +261,14 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         Obj *obj = &game_state->objs[i];
         if (!obj->exists)
             continue;
-        obj->aabb.draw();
+        obj->aabb.draw(false);
+    }
+
+    /* p coll pairs (AABBs colliding) */
+    for (u32 i = 0; i < p_coll_num; ++i)
+    {
+        game_state->p_coll_pairs[i][0]->aabb.draw(true);
+        game_state->p_coll_pairs[i][1]->aabb.draw(true);
     }
 
     /* mouse force */

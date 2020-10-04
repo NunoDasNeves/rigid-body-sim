@@ -7,12 +7,13 @@
 struct AABB {
     Vec2 min;
     Vec2 max;
-    void draw();
+    void draw(bool intersecting);
+    bool intersects(AABB other);
 };
 
 struct Obj {
     union {
-        u32 exists;
+        u32 exists; // read only. nonzero width/radius means exists
         f32 width;
         f32 radius;
     };
@@ -94,7 +95,8 @@ struct GameState
     Obj objs[MAX_OBJS];
 
     /* Physics */
-    //Obj p_coll_pairs[MAX_OBJS * MAX_OBJS][2]; // potential
+    Obj *p_coll_pairs[MAX_OBJS * MAX_OBJS][2]; // potential
+    Obj *coll_pairs[MAX_OBJS * MAX_OBJS][2];
     Vec2 mouse_force_origin;
     bool mouse_dragging;
 };
