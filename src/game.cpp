@@ -53,8 +53,12 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     for (int i = 0; i < MAX_OBJS; ++i)
     {
         Obj *obj = &objs[i];
-        if (!obj->mass || obj->is_static)
+        if (!obj->width || obj->is_static)
             continue;
+
+        /* Compute forces */
+        obj->torque = 0.0F;
+        obj->force = Vec2{0.0F, 0.0F};
         /* Gravity */
         //obj->vel.y = obj->vel.y + -9.81F * dt;
         /* Mouse force */
@@ -65,14 +69,16 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             if (mouse_released)
             {
                 /* scale length on constant factor */
-                static const f32 m_force_scale = 10.0F;
+                static const f32 m_force_scale = 30.0F;
                 Vec2 m_force = mouse_pos - game_state->mouse_force_origin;
-                m_force = m_force.normalized() * m_force_scale;
-                obj->vel = obj->vel + (m_force * dt);
+                m_force = m_force * m_force_scale;
+                obj->torque = obj->torque + (mouse_to_obj.x * m_force.y + mouse_to_obj.y * m_force.x);
+                obj->force = obj->force + m_force;
             }
         }
 
         /* Integrate */
+        obj->vel = obj->vel + ((obj->force / obj->mass) * dt);
         obj->pos = obj->pos + (obj->vel * dt);
     }
 
@@ -99,7 +105,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     for (int i = 0; i < MAX_OBJS; ++i)
     {
         Obj *obj = &game_state->objs[i];
-        if (!obj->mass)
+        if (!obj->width)
             continue;
         Color obj_color = Color{0.5F,0.8F,0.5F,1.0F};
         bool obj_wireframe = true;
@@ -152,7 +158,7 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     GameMemoryBlock* block = (GameMemoryBlock*)(game_memory->memory);
     GameState* game_state = &block->game_state;
 
-    game_state->objs[0] = Obj{1, 0.4F, 0.0F, Vec2(0.5F,0.0F), Obj::Circle, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
-    game_state->objs[1] = Obj{1, 0.3F, 0.2F, Vec2(-0.5F,0.0F), Obj::Rect, false, Vec2(0,0), Vec2(0,0), Vec2(0,0)};
-    game_state->objs[2] = Obj{1, 1.5F, 0.2F, Vec2(0.0F,-0.6F), Obj::Rect, true};
+    game_state->objs[0] = Obj::dyn_circle(0.4F, Vec2(0.5F,0.0F), 1);
+    game_state->objs[1] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,0.0F), M_PI / 4.0F, 1);
+    game_state->objs[2] = Obj::static_rect(1.5F, 0.2F, Vec2(0.0F,-0.6F), 0);
 }

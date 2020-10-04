@@ -5,12 +5,11 @@
 #define MAX_OBJS 128
 
 struct Obj {
-    f32 mass; // if 0, no obj
-
-    f32 width;
+    f32 width; // if 0, no obj. diameter for circle
     f32 height; // ignored for circle
 
     Vec2 pos;
+    f32 rot;
 
     enum {
         Circle,
@@ -19,9 +18,36 @@ struct Obj {
 
     bool is_static;
 
+    /* Static objects have none of these: */
+    f32 mass;
+    f32 inertia;
     Vec2 vel;
-    Vec2 accel;
-    Vec2 alpha; // angular momentum
+    Vec2 alpha; // angular_vel
+    Vec2 force;
+    f32 torque;
+
+    static Obj dyn_circle(f32 radius, Vec2 pos, f32 mass)
+    {
+        return Obj {
+            radius * 2.0F, 0, pos, 0, Circle, false, mass,
+            0.5F * mass * radius * radius // inertia
+            };
+    }
+    static Obj dyn_rect(f32 width, f32 height, Vec2 pos, f32 rot, f32 mass)
+    {
+        return Obj {
+            width, height, pos, rot, Rect, false, mass,
+            (1.0F/12.0F) * mass * (height * height + width * width) // inertia
+            };
+    }
+    static Obj static_circle(f32 radius, Vec2 pos)
+    {
+        return Obj { radius * 2.0F, 0, pos, 0, Circle, true };
+    }
+    static Obj static_rect(f32 width, f32 height, Vec2 pos, f32 rot)
+    {
+        return Obj { width, height, pos, rot, Rect, true };
+    }
 };
 
 struct GameState

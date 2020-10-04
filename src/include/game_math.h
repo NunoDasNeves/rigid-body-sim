@@ -5,7 +5,7 @@
 #include"util.h"
 
 #ifndef M_PI
-#define M_PI 3.14159265358979323846
+#define M_PI 3.14159265358979323846F
 #endif
 
 #define SIGN(X) ((X) > 0.0F ? (1) : ((X) == 0.0F ? (0) : (-1)))
