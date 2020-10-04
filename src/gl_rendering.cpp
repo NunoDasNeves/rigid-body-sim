@@ -31,7 +31,7 @@ struct Rect
     GLuint EBO;
 };
 
-#define NUM_CIRCLE_POINTS 20
+#define NUM_CIRCLE_POINTS 64
 
 struct Circle
 {

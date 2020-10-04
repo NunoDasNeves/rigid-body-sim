@@ -228,24 +228,24 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         if (obj_pair[0]->shape == Obj::Rect)
         {
 
-            Vec2 obj_verts[2][4];
-            get_rect_verts(obj_pair[0], obj_verts[0]);
+            Vec2 verts[2][4];
+            get_rect_verts(obj_pair[0], verts[0]);
 
             /* Rect/Rect */
             if (obj_pair[1]->shape == Obj::Rect)
             {
                 colliding = true;
-                get_rect_verts(obj_pair[1], obj_verts[1]);
+                get_rect_verts(obj_pair[1], verts[1]);
                 for (int j = 0; j < 4; ++j)
                 {
-                    Vec2 edge = obj_verts[0][(j+1) % 4] - obj_verts[0][j];
+                    Vec2 edge = verts[0][(j+1) % 4] - verts[0][j];
                     /* normal to the edge */
                     Vec2 n = edge.rotate(-M_PI/2.0F);
                     u32 num_verts_in_front = 0;
                     for (int k = 0; k < 4; ++k)
                     {
                         /* first point on this edge to vertex 'k' on other poly */
-                        Vec2 v = obj_verts[1][k] - obj_verts[0][j];
+                        Vec2 v = verts[1][k] - verts[0][j];
                         if (n.dot(v) > 0.0F)
                         {
                             num_verts_in_front++;
@@ -262,12 +262,52 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             /* Rect/Circle */
             else
             {
-
+                /* Strategy (generalizes to any convex polygon):
+                 * 1. Check no vertices are inside circle       (simple)
+                 * 2. Check no edges intersect circle           (find closest point to circle on line, check if it's in circle)
+                 * 3. (TODO) Check circle center not inside rectangle  (point in polygon)
+                 * Alternative (only rectangles):
+                 * 1. Rotate rect and circle so rect is axis aligned for each v, v.rotate(-rect->rot)
+                 * 2. Check no vertices are inside circle
+                 * 3. If circle intersects on an axis with rect, check the center is further than the radius
+                 */
+                colliding = false;
+                Obj *rect = obj_pair[0];
+                Obj *circle = obj_pair[1];
+                Vec2 * rect_verts = verts[0];
+                /* (TODO) Check circle center not inside rectangle here */
+                for (int j = 0; j < 4; ++j)
+                {
+                    Vec2 v2circle = circle->pos - verts[0][j];
+                    /* Vert in circle */
+                    if (v2circle.length() < circle->radius)
+                    {
+                        colliding = true;
+                        break;
+                    }
+                    Vec2 edge = verts[0][(j+1) % 4] - verts[0][j];
+                    /* Point on line closest to circle */
+                    Vec2 p = edge.normalized() * (edge.dot(v2circle) / edge.length());
+                    /* Check if point lies between the verts, by checking its direction and length */
+                    f32 edotp = edge.dot(p);
+                    if (edotp < 0.0F || edotp > edge.dot(edge))
+                    {
+                        continue;
+                    }
+                    /* Check if point in circle */
+                    Vec2 p2circle = v2circle - p;
+                    if (p2circle.length() < circle->radius)
+                    {
+                        colliding = true;
+                        break;
+                    }
+                }
             }
         }
         /* Circle/Circle */
         else
         {
+            colliding = false;
             if (obj2obj.length() < (obj_pair[0]->radius + obj_pair[1]->radius))
             {
                 colliding = true;
