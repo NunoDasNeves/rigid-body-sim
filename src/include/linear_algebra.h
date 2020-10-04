@@ -49,6 +49,10 @@ struct Vec2
         return Vec2(cos_r * x - sin_r * y,
                     sin_r * x + cos_r * y);
     }
+    f32 dot(const Vec2& v)
+    {
+        return x*v.x + y*v.y;
+    }
     void debug_print()
     {
         DEBUG_PRINTF("(%f, %f)\n", x, y);

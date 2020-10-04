@@ -57,6 +57,25 @@ void AABB::draw(bool intersecting)
                     color);
 }
 
+void get_rect_verts(Obj *rect, Vec2 *ret)
+{
+    f32 width_2 = rect->width / 2.0F;
+    f32 height_2 = rect->height / 2.0F;
+    Vec2 local_verts[] = {
+                Vec2(width_2, height_2),
+                Vec2(-width_2, height_2),
+                Vec2(-width_2, -height_2),
+                Vec2(width_2, -height_2),
+            };
+
+    Mat4 model = Mat4::identity().frame_translate(Vec3(rect->pos, 0.0)).frame_rotate_z(rect->rot);
+    for (int i = 0; i < 4; ++i)
+    {
+        Vec4 world_vert = model * Vec4(local_verts[i], 0, 1);
+        ret[i] = Vec2(world_vert.x, world_vert.y);
+    }
+}
+
 void Obj::update_aabb()
 {
     switch(this->shape)
@@ -67,24 +86,18 @@ void Obj::update_aabb()
             break;
         case Obj::Rect:
         {
-            Vec2 verts[] = {
-                Vec2(-this->width, -this->height) / 2.0F,
-                Vec2(-this->width, this->height) / 2.0F,
-                Vec2(this->width, this->height) / 2.0F,
-                Vec2(this->width, -this->height) / 2.0F,
-            };
+            Vec2 rect_verts[4];
+            get_rect_verts(this, rect_verts);
 
             this->aabb.min = this->pos;
             this->aabb.max = this->pos;
             for (int i = 0; i < 4; ++i)
             {
-                Mat4 model = Mat4::identity().frame_translate(Vec3(this->pos, 0.0)).frame_rotate_z(this->rot);
-                Vec4 point4 = model * Vec4(verts[i], 0, 1);
-                Vec2 point = Vec2(point4.x, point4.y);
-                this->aabb.min.x = MIN(point.x, this->aabb.min.x);
-                this->aabb.min.y = MIN(point.y, this->aabb.min.y);
-                this->aabb.max.x = MAX(point.x, this->aabb.max.x);
-                this->aabb.max.y = MAX(point.y, this->aabb.max.y);
+                Vec2 *point = &rect_verts[i];
+                this->aabb.min.x = MIN(point->x, this->aabb.min.x);
+                this->aabb.min.y = MIN(point->y, this->aabb.min.y);
+                this->aabb.max.x = MAX(point->x, this->aabb.max.x);
+                this->aabb.max.y = MAX(point->y, this->aabb.max.y);
             }
             break;
         }
@@ -200,27 +213,57 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     for (u32 i = 0; i < p_coll_num; ++i)
     {
         Obj **obj_pair = game_state->p_coll_pairs[i];
-        /* Order by shape, i.e. swap if rect is first in the pair */
-        if (obj_pair[1]->shape == Obj::Circle)
+        /* Order by shape, i.e. swap if circle is first in the pair */
+        if (obj_pair[1]->shape == Obj::Rect)
         {
             Obj *tmp = obj_pair[0];
             obj_pair[0] = obj_pair[1];
             obj_pair[1] = tmp;
         }
 
-        /* Now we have 3 cases: circle/circle, circle/rect, rect/rect */
+        /* Now we have 3 cases: circle/circle, rect/circle, rect/rect */
         bool colliding = false;
         Vec2 obj2obj = obj_pair[1]->pos - obj_pair[0]->pos;
 
-        /* Rect/Rect */
         if (obj_pair[0]->shape == Obj::Rect)
         {
-            /* TODO */
-        }
-        /* Circle/Rect */
-        else if (obj_pair[1]->shape == Obj::Rect)
-        {
-            /* TODO */
+
+            Vec2 obj_verts[2][4];
+            get_rect_verts(obj_pair[0], obj_verts[0]);
+
+            /* Rect/Rect */
+            if (obj_pair[1]->shape == Obj::Rect)
+            {
+                colliding = true;
+                get_rect_verts(obj_pair[1], obj_verts[1]);
+                for (int j = 0; j < 4; ++j)
+                {
+                    Vec2 edge = obj_verts[0][(j+1) % 4] - obj_verts[0][j];
+                    /* normal to the edge */
+                    Vec2 n = edge.rotate(-M_PI/2.0F);
+                    u32 num_verts_in_front = 0;
+                    for (int k = 0; k < 4; ++k)
+                    {
+                        /* first point on this edge to vertex 'k' on other poly */
+                        Vec2 v = obj_verts[1][k] - obj_verts[0][j];
+                        if (n.dot(v) > 0.0F)
+                        {
+                            num_verts_in_front++;
+                        }
+                    }
+                    if (num_verts_in_front == 4)
+                    {
+                        colliding = false;
+                        break;
+                    }
+                }
+
+            }
+            /* Rect/Circle */
+            else
+            {
+
+            }
         }
         /* Circle/Circle */
         else
@@ -370,8 +413,8 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     GameMemoryBlock* block = (GameMemoryBlock*)(game_memory->memory);
     GameState* game_state = &block->game_state;
 
-    game_state->objs[0] = Obj::dyn_circle(0.4F, Vec2(0.5F,0.0F), 1);
+    game_state->objs[0] = Obj::dyn_circle(0.35F, Vec2(0.5F,0.0F), 1);
     game_state->objs[1] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,0.0F), M_PI / 4.0F, 1);
-    game_state->objs[2] = Obj::static_rect(1.5F, 0.2F, Vec2(0.0F,-0.6F), 0);
+    game_state->objs[2] = Obj::static_rect(0.5F, 0.2F, Vec2(0.0F,-0.6F), M_PI/4.0F);
     game_state->objs[3] = Obj::static_circle(0.3F, Vec2(0.0F,0.6F));
 }
