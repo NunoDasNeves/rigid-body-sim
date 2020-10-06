@@ -104,6 +104,43 @@ void Obj::update_aabb()
     }
 }
 
+bool polys_colliding_sat(Vec2 *vertsA, u32 num_vertsA, Vec2 *vertsB, u32 num_vertsB)
+{
+    Vec2 *verts[2] = {vertsA, vertsB};
+    u32 num[2] = {num_vertsA, num_vertsB};
+    for (u32 i = 0; i < 2; ++i)
+    {
+        /* Swap; we need to check both sets of edges */
+        if (i) {
+            verts[0] = vertsB;
+            verts[1] = vertsA;
+            num[0] = num_vertsB;
+            num[1] = num_vertsA;
+        }
+        for (u32 j = 0; j < num[0]; ++j)
+        {
+            Vec2 edge = verts[0][(j+1) % num[0]] - verts[0][j];
+            /* normal to the edge */
+            Vec2 n = edge.rotate(-M_PI/2.0F); /* Vec2(edge.y, -edge.x); */
+            u32 num_verts_in_front = 0;
+            for (u32 k = 0; k < num[1]; ++k)
+            {
+                /* first point on this edge to vertex 'k' on other poly */
+                Vec2 v = verts[1][k] - verts[0][j];
+                if (n.dot(v) > 0.0F)
+                {
+                    num_verts_in_front++;
+                }
+            }
+            if (num_verts_in_front == num[1])
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buffer, GameRenderInfo* render_info)
 {
     GameMemoryBlock* block = (GameMemoryBlock*)(game_memory->memory);
@@ -234,30 +271,8 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             /* Rect/Rect */
             if (obj_pair[1]->shape == Obj::Rect)
             {
-                colliding = true;
                 get_rect_verts(obj_pair[1], verts[1]);
-                for (int j = 0; j < 4; ++j)
-                {
-                    Vec2 edge = verts[0][(j+1) % 4] - verts[0][j];
-                    /* normal to the edge */
-                    Vec2 n = edge.rotate(-M_PI/2.0F);
-                    u32 num_verts_in_front = 0;
-                    for (int k = 0; k < 4; ++k)
-                    {
-                        /* first point on this edge to vertex 'k' on other poly */
-                        Vec2 v = verts[1][k] - verts[0][j];
-                        if (n.dot(v) > 0.0F)
-                        {
-                            num_verts_in_front++;
-                        }
-                    }
-                    if (num_verts_in_front == 4)
-                    {
-                        colliding = false;
-                        break;
-                    }
-                }
-
+                colliding = polys_colliding_sat(verts[0], 4, verts[1], 4);
             }
             /* Rect/Circle */
             else
