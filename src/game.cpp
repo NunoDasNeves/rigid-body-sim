@@ -104,40 +104,64 @@ void Obj::update_aabb()
     }
 }
 
-bool polys_colliding_sat(Vec2 *vertsA, u32 num_vertsA, Vec2 *vertsB, u32 num_vertsB)
+bool polys_colliding_sat(Obj *objs[2], Vec2 *verts[2], u32 num_verts[2], Collision *collision)
 {
-    Vec2 *verts[2] = {vertsA, vertsB};
-    u32 num[2] = {num_vertsA, num_vertsB};
+    /* _e = poly whose edges we're checking, v = poly whose verts we're checking */
+    Obj *obj_e = objs[0];
+    Obj *obj_v = objs[1];
+    Vec2 *verts_e = verts[0];
+    Vec2 *verts_v = verts[1];
+    u32 num_verts_e = num_verts[0];
+    u32 num_verts_v = num_verts[1];
+    f32 closest_proj = -99.0F; /* TODO how to initialize this better */
     for (u32 i = 0; i < 2; ++i)
     {
         /* Swap; we need to check both sets of edges */
         if (i) {
-            verts[0] = vertsB;
-            verts[1] = vertsA;
-            num[0] = num_vertsB;
-            num[1] = num_vertsA;
+            verts_e = verts[1];
+            verts_v = verts[0];
+            num_verts_e = num_verts[1];
+            num_verts_v = num_verts[0];
+            obj_e = objs[1];
+            obj_v = objs[0];
         }
-        for (u32 j = 0; j < num[0]; ++j)
+        for (u32 j = 0; j < num_verts_e; ++j)
         {
-            Vec2 edge = verts[0][(j+1) % num[0]] - verts[0][j];
+            Vec2 edge = verts_e[(j+1) % num_verts_e] - verts_e[j];
             /* normal to the edge */
-            Vec2 n = Vec2(edge.y, -edge.x); /* edge.rotate(-M_PI/2.0F); */
+            Vec2 n = Vec2(edge.y, -edge.x).normalized(); /* edge.rotate(-M_PI/2.0F); */
             u32 num_verts_in_front = 0;
-            for (u32 k = 0; k < num[1]; ++k)
+            for (u32 k = 0; k < num_verts_v; ++k)
             {
                 /* first point on this edge to vertex 'k' on other poly */
-                Vec2 v = verts[1][k] - verts[0][j];
-                if (n.dot(v) > 0.0F)
+                Vec2 v = verts_v[k] - verts_e[j];
+                f32 proj_dist = n.dot(v);
+                if (proj_dist > 0.0F)
                 {
                     num_verts_in_front++;
                 }
+                else if (proj_dist > closest_proj)
+                {
+                    /* additional check to see if this point is really 'behind' the edge */
+                    Vec2 v2 = verts_v[k] - verts_e[(j+1) % num_verts_e];
+                    if (edge.dot(v) > 0.0F && (edge * -1.0F).dot(v2) > 0.0F)
+                    {
+                        closest_proj = proj_dist;
+                        collision->objs[0] = obj_e;
+                        collision->objs[1] = obj_v;
+                        collision->points[0] = verts_v[k] + n * proj_dist * -1.0F;
+                        collision->points[1] = verts_v[k];
+                        collision->normal = n;
+                    }
+                }
             }
-            if (num_verts_in_front == num[1])
+            if (num_verts_in_front == num_verts_v)
             {
                 return false;
             }
         }
     }
+
     return true;
 }
 
@@ -273,13 +297,9 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             if (obj_pair[1]->shape == Obj::Rect)
             {
                 get_rect_verts(obj_pair[1], verts[1]);
-                colliding = polys_colliding_sat(verts[0], 4, verts[1], 4);
-                /* TODO this properly */
-                collision->objs[0] = obj_pair[0];
-                collision->objs[1] = obj_pair[1];
-                collision->points[0] = obj_pair[0]->pos;
-                collision->points[1] = obj_pair[1]->pos;
-                collision->normal = obj_pair[1]->pos - obj_pair[0]->pos;
+                u32 _num_verts[2] = {4,4};
+                Vec2 *_verts[2] = {verts[0], verts[1]};
+                colliding = polys_colliding_sat(obj_pair, _verts, _num_verts, collision);
             }
             /* Rect/Circle */
             else
@@ -431,7 +451,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         Color coll_normal_color = Color{0.0F,0.0F,1.0F,1.0F};
         for (u32 j = 0; j < 2; ++j)
         {
-            Vec2 normal = collision->normal * (j ? -1.0F : 1.0F) * 0.1;
+            Vec2 normal = collision->normal * (j ? -1.0F : 1.0F) * 0.1F;
             rendering_draw_line(
                     collision->points[j] + normal,
                     normal * -1.0F,
