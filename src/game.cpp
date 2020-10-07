@@ -305,6 +305,11 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                 {
                     Vec2 v2circle = circle->pos - rect_verts[j];
                     /* Vert in circle */
+                    /* TODO
+                     * In this case the circle is also colliding with an edge, we should use that instead
+                     * UNLESS the circle completely covers the rectangle...then we do something random
+                     * or use more continuous or sweep-y methods
+                     */
                     if (v2circle.length() < circle->radius)
                     {
                         colliding = true;
@@ -312,7 +317,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                         collision->objs[0] = rect;
                         collision->objs[1] = circle;
                         collision->points[0] = rect_verts[j];
-                        collision->points[1] = rect_verts[j] - coll_normal * circle->radius;
+                        collision->points[1] = circle->pos - coll_normal * circle->radius;
                         collision->normal = coll_normal;
                         break;
                     }
@@ -330,6 +335,13 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                     if (p2circle.length() < circle->radius)
                     {
                         colliding = true;
+                        Vec2 p_point = rect_verts[j] + p;
+                        Vec2 coll_normal = (circle->pos - p_point).normalized();
+                        collision->objs[0] = rect;
+                        collision->objs[1] = circle;
+                        collision->points[0] = p_point;
+                        collision->points[1] = circle->pos - coll_normal * circle->radius;
+                        collision->normal = coll_normal;
                         break;
                     }
                 }
@@ -415,35 +427,22 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     /* actual collisions */
     for (u32 i = 0; i < coll_num; ++i)
     {
-        for (int j = 0; j < 2; ++j)
+        collision = &game_state->collisions[i];
+        Color coll_normal_color = Color{0.0F,0.0F,1.0F,1.0F};
+        for (u32 j = 0; j < 2; ++j)
         {
-            Obj *obj = game_state->collisions[i].objs[j];
-            Color obj_color = Color{0.6F,0.9F,0.6F,1.0F};
-            bool obj_wireframe = true;
-            if (obj->is_static) {
-                obj_color = Color{0.7F,0.7F,0.7F,1.0F};
-                obj_wireframe = false;
-            }
-            switch(obj->shape)
-            {
-                case Obj::Circle:
-                    rendering_draw_circle(
-                        obj->pos,
-                        obj->rot,
-                        obj->radius,
-                        obj_color,
-                        obj_wireframe);
-                    break;
-                case Obj::Rect:
-                    rendering_draw_rect(
-                        obj->pos,
-                        obj->rot,
-                        Vec2(obj->width, obj->height),
-                        NULL,
-                        obj_color,
-                        obj_wireframe);
-                    break;
-            }
+            Vec2 normal = collision->normal * (j ? -1.0F : 1.0F) * 0.1;
+            rendering_draw_line(
+                    collision->points[j] + normal,
+                    normal * -1.0F,
+                    2,
+                    coll_normal_color);
+            rendering_draw_circle(
+                    collision->points[j],
+                    0,
+                    0.01F,
+                    coll_normal_color,
+                    false);
         }
     }
 
