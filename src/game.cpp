@@ -121,7 +121,7 @@ bool polys_colliding_sat(Vec2 *vertsA, u32 num_vertsA, Vec2 *vertsB, u32 num_ver
         {
             Vec2 edge = verts[0][(j+1) % num[0]] - verts[0][j];
             /* normal to the edge */
-            Vec2 n = edge.rotate(-M_PI/2.0F); /* Vec2(edge.y, -edge.x); */
+            Vec2 n = Vec2(edge.y, -edge.x); /* edge.rotate(-M_PI/2.0F); */
             u32 num_verts_in_front = 0;
             for (u32 k = 0; k < num[1]; ++k)
             {
@@ -247,6 +247,8 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     }
     /* narrow phase - produce pairs of colliding objects */
     u32 coll_num = 0;
+    Collision *collision = &game_state->collisions[0];
+    bool colliding = false;
     for (u32 i = 0; i < p_coll_num; ++i)
     {
         Obj **obj_pair = game_state->p_coll_pairs[i];
@@ -259,7 +261,6 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         }
 
         /* Now we have 3 cases: circle/circle, rect/circle, rect/rect */
-        bool colliding = false;
         Vec2 obj2obj = obj_pair[1]->pos - obj_pair[0]->pos;
 
         if (obj_pair[0]->shape == Obj::Rect)
@@ -273,6 +274,12 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             {
                 get_rect_verts(obj_pair[1], verts[1]);
                 colliding = polys_colliding_sat(verts[0], 4, verts[1], 4);
+                /* TODO this properly */
+                collision->objs[0] = obj_pair[0];
+                collision->objs[1] = obj_pair[1];
+                collision->points[0] = obj_pair[0]->pos;
+                collision->points[1] = obj_pair[1]->pos;
+                collision->normal = obj_pair[1]->pos - obj_pair[0]->pos;
             }
             /* Rect/Circle */
             else
@@ -285,6 +292,9 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                  * 1. Rotate rect and circle so rect is axis aligned for each v, v.rotate(-rect->rot)
                  * 2. Check no vertices are inside circle
                  * 3. If circle intersects on an axis with rect, check the center is further than the radius
+                 * SAT strategy - should probably do this:
+                 * 1. Check axes on edges of polygon
+                 * 2. Check axes from each vertex of polygon to center of circle
                  */
                 colliding = false;
                 Obj *rect = obj_pair[0];
@@ -293,14 +303,20 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                 /* (TODO) Check circle center not inside rectangle here */
                 for (int j = 0; j < 4; ++j)
                 {
-                    Vec2 v2circle = circle->pos - verts[0][j];
+                    Vec2 v2circle = circle->pos - rect_verts[j];
                     /* Vert in circle */
                     if (v2circle.length() < circle->radius)
                     {
                         colliding = true;
+                        Vec2 coll_normal = (circle->pos - rect_verts[j]).normalized();
+                        collision->objs[0] = rect;
+                        collision->objs[1] = circle;
+                        collision->points[0] = rect_verts[j];
+                        collision->points[1] = rect_verts[j] - coll_normal * circle->radius;
+                        collision->normal = coll_normal;
                         break;
                     }
-                    Vec2 edge = verts[0][(j+1) % 4] - verts[0][j];
+                    Vec2 edge = rect_verts[(j+1) % 4] - rect_verts[j];
                     /* Point on line closest to circle */
                     Vec2 p = edge.normalized() * (edge.dot(v2circle) / edge.length());
                     /* Check if point lies between the verts, by checking its direction and length */
@@ -325,15 +341,20 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             colliding = false;
             if (obj2obj.length() < (obj_pair[0]->radius + obj_pair[1]->radius))
             {
+                Vec2 coll_normal = (obj_pair[1]->pos - obj_pair[0]->pos).normalized();
+                collision->objs[0] = obj_pair[0];
+                collision->objs[1] = obj_pair[1];
+                collision->points[0] = obj_pair[0]->pos + coll_normal * obj_pair[0]->radius;
+                collision->points[1] = obj_pair[1]->pos - coll_normal * obj_pair[1]->radius;
+                collision->normal = coll_normal;
                 colliding = true;
             }
         }
 
         if (colliding)
         {
-            game_state->coll_pairs[coll_num][0] = obj_pair[0];
-            game_state->coll_pairs[coll_num][1] = obj_pair[1];
             coll_num++;
+            collision = &game_state->collisions[coll_num];
         }
     }
 
@@ -396,7 +417,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     {
         for (int j = 0; j < 2; ++j)
         {
-            Obj *obj = game_state->coll_pairs[i][j];
+            Obj *obj = game_state->collisions[i].objs[j];
             Color obj_color = Color{0.6F,0.9F,0.6F,1.0F};
             bool obj_wireframe = true;
             if (obj->is_static) {

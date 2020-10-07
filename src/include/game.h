@@ -89,6 +89,13 @@ struct Obj {
     void update_aabb();
 };
 
+struct Collision
+{
+    Obj *objs[2];
+    Vec2 points[2];
+    Vec2 normal; /* from obj 0 to 1 */
+};
+
 struct GameState
 {
     Vec2 camera_pos;
@@ -96,7 +103,7 @@ struct GameState
 
     /* Physics */
     Obj *p_coll_pairs[MAX_OBJS * MAX_OBJS][2]; // potential
-    Obj *coll_pairs[MAX_OBJS * MAX_OBJS][2];
+    Collision collisions[MAX_OBJS * MAX_OBJS];
     Vec2 mouse_force_origin;
     bool mouse_dragging;
 };
