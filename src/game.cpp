@@ -200,7 +200,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     Obj *objs = game_state->objs;
 
     /* slow down */
-    dt *= 0.8F;
+    dt *= 0.5F;
 
     for (int i = 0; i < MAX_OBJS; ++i)
     {
@@ -212,7 +212,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         obj->torque = 0.0F;
         obj->force = Vec2{0.0F, 0.0F};
         /* Gravity */
-        //obj->vel.y = obj->vel.y + -9.81F * dt;
+        //obj->force = obj->force + Vec2(0, -9.81F);
         /* Mouse force */
         Vec2 mouse_to_obj = obj->pos - mouse_pos;
         /* TODO this check is hacky, redo */
@@ -403,16 +403,16 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             coll_objs[0]->is_static ? 0.0F : 1.0F / coll_objs[0]->mass,
             coll_objs[1]->is_static ? 0.0F : 1.0F / coll_objs[1]->mass
         };
-        /* Alpha cross R */
         Vec2 tangential_vels[2] = {
             Vec3(0, 0, coll_objs[0]->alpha).cross(Vec3(rs[0], 0)).xy(),
             Vec3(0, 0, coll_objs[1]->alpha).cross(Vec3(rs[1], 0)).xy()
         };
+        /* Velocities at points of collision */
         Vec2 point_vels[2] = {
             coll_objs[0]->vel + tangential_vels[0],
             coll_objs[1]->vel + tangential_vels[1]
         };
-        /* compute impulse */
+        /* Compute impulse */
         f32 coeff_restitution = 1.0F;
         Vec2 vel_diff = point_vels[0] - point_vels[1];
         f32 J_numerator = -(vel_diff.dot(collision->normal)) * (coeff_restitution + 1.0F);
@@ -427,7 +427,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         f32 J_denominator = mass_recip[0] + mass_recip[1] + collision->normal.dot(cross_rs[0] + cross_rs[1]);
         f32 J_mag = J_numerator / J_denominator;
         Vec2 J = collision->normal * J_mag;
-        /* update vels and alphas */
+        /* Update vels and alphas */
         if (!coll_objs[0]->is_static)
         {
             coll_objs[0]->vel = coll_objs[0]->vel + J / coll_objs[0]->mass;
@@ -558,8 +558,12 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     GameMemoryBlock* block = (GameMemoryBlock*)(game_memory->memory);
     GameState* game_state = &block->game_state;
 
-    game_state->objs[0] = Obj::dyn_circle(0.35F, Vec2(0.5F,0.0F), 1);
-    game_state->objs[1] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,0.0F), M_PI / 4.0F, 1);
-    game_state->objs[2] = Obj::static_rect(0.5F, 0.2F, Vec2(0.0F,-0.6F), M_PI/4.0F);
-    game_state->objs[3] = Obj::static_circle(0.3F, Vec2(0.0F,0.6F));
+    game_state->objs[0] = Obj::static_rect(2.0F, 0.2F, Vec2( 0.0F, 1.0F), 0);
+    game_state->objs[1] = Obj::static_rect(2.0F, 0.2F, Vec2( 0.0F,-1.0F), 0);
+    game_state->objs[2] = Obj::static_rect(0.2F, 2.0F, Vec2( 1.0F, 0.0F), 0);
+    game_state->objs[3] = Obj::static_rect(0.2F, 2.0F, Vec2(-1.0F, 0.0F), 0);
+    game_state->objs[4] = Obj::static_circle(0.2F, Vec2(0.0F,0.0F));
+
+    game_state->objs[5] = Obj::dyn_circle(0.2F, Vec2(0.5F,0.0F), 1);
+    game_state->objs[6] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,0.0F), M_PI / 4.0F, 1);
 }
