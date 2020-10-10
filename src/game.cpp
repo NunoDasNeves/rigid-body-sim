@@ -404,19 +404,17 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             coll_objs[1]->is_static ? 0.0F : 1.0F / coll_objs[1]->mass
         };
         /* Alpha cross R */
-        /*
         Vec2 tangential_vels[2] = {
-            Vec2(-coll_objs[0]->alpha * rs[0].y, coll_objs[0]->alpha * rs[0].x),
-            Vec2(-coll_objs[1]->alpha * rs[1].y, coll_objs[1]->alpha * rs[1].x)
+            Vec3(0, 0, coll_objs[0]->alpha).cross(Vec3(rs[0], 0)).xy(),
+            Vec3(0, 0, coll_objs[1]->alpha).cross(Vec3(rs[1], 0)).xy()
         };
         Vec2 point_vels[2] = {
-            coll_objs[0].vel + tangential_vels[0],
-            coll_objs[1].vel + tangential_vels[1]
+            coll_objs[0]->vel + tangential_vels[0],
+            coll_objs[1]->vel + tangential_vels[1]
         };
-        */
         /* compute impulse */
         f32 coeff_restitution = 1.0F;
-        Vec2 vel_diff = coll_objs[0]->vel - coll_objs[1]->vel;
+        Vec2 vel_diff = point_vels[0] - point_vels[1];
         f32 J_numerator = -(vel_diff.dot(collision->normal)) * (coeff_restitution + 1.0F);
         Vec3 rs_cross_n_div_I[2] = {
             coll_objs[0]->is_static ? Vec3() : Vec3(rs[0], 0).cross(Vec3(collision->normal, 0)) / coll_objs[0]->inertia,
