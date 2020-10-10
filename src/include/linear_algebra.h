@@ -86,6 +86,18 @@ struct Vec3
     {
         return Vec3(x/s, y/s, z/s);
     }
+    Vec3 cross(const Vec3& v)
+    {
+        return Vec3(
+            y*v.z - z*v.y,
+            z*v.x - x*v.z,
+            x*v.y - y*v.x
+        );
+    }
+    Vec2 xy()
+    {
+        return Vec2(x,y);
+    }
     void debug_print()
     {
         DEBUG_PRINTF("(%f, %f, %f)\n", x, y, z);

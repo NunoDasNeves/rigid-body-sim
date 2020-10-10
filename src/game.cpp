@@ -393,43 +393,53 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     for (u32 i = 0; i < coll_num; ++i)
     {
         collision = &game_state->collisions[i];
-        Obj **objs = collision->objs;
+        Obj **coll_objs = collision->objs;
         Vec2 *points = collision->points;
         Vec2 rs[2] = {
-            points[0] - objs[0]->pos,
-            points[1] - objs[1]->pos
+            points[0] - coll_objs[0]->pos,
+            points[1] - coll_objs[1]->pos
+        };
+        f32 mass_recip[2] = {
+            coll_objs[0]->is_static ? 0.0F : 1.0F / coll_objs[0]->mass,
+            coll_objs[1]->is_static ? 0.0F : 1.0F / coll_objs[1]->mass
         };
         /* Alpha cross R */
         /*
         Vec2 tangential_vels[2] = {
-            Vec2(-objs[0]->alpha * rs[0].y, objs[0]->alpha * rs[0].x),
-            Vec2(-objs[1]->alpha * rs[1].y, objs[1]->alpha * rs[1].x)
+            Vec2(-coll_objs[0]->alpha * rs[0].y, coll_objs[0]->alpha * rs[0].x),
+            Vec2(-coll_objs[1]->alpha * rs[1].y, coll_objs[1]->alpha * rs[1].x)
         };
         Vec2 point_vels[2] = {
-            objs[0].vel + tangential_vels[0],
-            objs[1].vel + tangential_vels[1]
+            coll_objs[0].vel + tangential_vels[0],
+            coll_objs[1].vel + tangential_vels[1]
         };
         */
         /* compute impulse */
         f32 coeff_restitution = 1.0F;
-        Vec2 vel_diff = objs[0]->vel - objs[1]->vel;
+        Vec2 vel_diff = coll_objs[0]->vel - coll_objs[1]->vel;
         f32 J_numerator = -(vel_diff.dot(collision->normal)) * (coeff_restitution + 1.0F);
-        f32 rs_cross_n_div_I[2] = {
-            (rs[0].x * collision->normal.y - rs[0].y * collision->normal.x) / objs[0]->inertia,
-            (rs[1].x * collision->normal.y - rs[1].y * collision->normal.x) / objs[1]->inertia
+        Vec3 rs_cross_n_div_I[2] = {
+            coll_objs[0]->is_static ? Vec3() : Vec3(rs[0], 0).cross(Vec3(collision->normal, 0)) / coll_objs[0]->inertia,
+            coll_objs[1]->is_static ? Vec3() : Vec3(rs[1], 0).cross(Vec3(collision->normal, 0)) / coll_objs[1]->inertia
         };
         Vec2 cross_rs[2] = {
-            Vec2(-rs_cross_n_div_I[0] * rs[0].y, rs_cross_n_div_I[0] * rs[0].x),
-            Vec2(-rs_cross_n_div_I[1] * rs[1].y, rs_cross_n_div_I[1] * rs[1].x)
+            rs_cross_n_div_I[0].cross(Vec3(rs[0], 0)).xy(),
+            rs_cross_n_div_I[1].cross(Vec3(rs[1], 0)).xy()
         };
-        f32 J_denominator = 1.0F/objs[0]->mass + 1.0F/objs[1]->mass + collision->normal.dot(cross_rs[0]) + collision->normal.dot(cross_rs[1]);
+        f32 J_denominator = mass_recip[0] + mass_recip[1] + collision->normal.dot(cross_rs[0] + cross_rs[1]);
         f32 J_mag = J_numerator / J_denominator;
         Vec2 J = collision->normal * J_mag;
         /* update vels and alphas */
-        objs[0]->vel = objs[0]->vel + J / objs[0]->mass;
-        objs[1]->vel = objs[1]->vel - J / objs[1]->mass;
-        objs[0]->alpha = objs[0]->alpha + (rs[0].x * J.y - rs[0].y * J.x) / objs[0]->inertia;
-        objs[1]->alpha = objs[1]->alpha - (rs[1].x * J.y - rs[1].y * J.x) / objs[1]->inertia;
+        if (!coll_objs[0]->is_static)
+        {
+            coll_objs[0]->vel = coll_objs[0]->vel + J / coll_objs[0]->mass;
+            coll_objs[0]->alpha = coll_objs[0]->alpha + (rs[0].x * J.y - rs[0].y * J.x) / coll_objs[0]->inertia;
+        }
+        if (!coll_objs[1]->is_static)
+        {
+            coll_objs[1]->vel = coll_objs[1]->vel - J / coll_objs[1]->mass;
+            coll_objs[1]->alpha = coll_objs[1]->alpha - (rs[1].x * J.y - rs[1].y * J.x) / coll_objs[1]->inertia;
+        }
     }
 
     /* rendering */
