@@ -560,20 +560,20 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     }
 
     /* aabbs */
-    for (int i = 0; i < MAX_OBJS; ++i)
+    /*for (int i = 0; i < MAX_OBJS; ++i)
     {
         Obj *obj = &game_state->objs[i];
         if (!obj->exists)
             continue;
         obj->aabb.draw(false);
-    }
+    }*/
 
     /* p coll pairs (AABBs colliding) */
-    for (u32 i = 0; i < p_coll_num; ++i)
+    /*for (u32 i = 0; i < p_coll_num; ++i)
     {
         game_state->p_coll_pairs[i][0]->aabb.draw(true);
         game_state->p_coll_pairs[i][1]->aabb.draw(true);
-    }
+    }*/
 
     /* mouse force */
     if (game_state->mouse_dragging)
