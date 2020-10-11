@@ -268,6 +268,14 @@ bool get_collision(Obj **pair, Collision *collision)
     return false;
 }
 
+void integrate(Obj *obj, f32 dt)
+{
+    obj->vel = obj->vel + ((obj->force / obj->mass) * dt);
+    obj->pos = obj->pos + (obj->vel * dt);
+    obj->alpha = obj->alpha + ((obj->torque / obj->inertia) * dt);
+    obj->rot = obj->rot + obj->alpha * dt;
+}
+
 void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buffer, GameRenderInfo* render_info)
 {
     GameMemoryBlock* block = (GameMemoryBlock*)(game_memory->memory);
@@ -335,11 +343,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             }
         }
 
-        /* Integrate */
-        obj->vel = obj->vel + ((obj->force / obj->mass) * dt);
-        obj->pos = obj->pos + (obj->vel * dt);
-        obj->alpha = obj->alpha + ((obj->torque / obj->inertia) * dt);
-        obj->rot = obj->rot + obj->alpha * dt;
+        integrate(obj, dt);
     }
 
     /* physics - collision detection */
@@ -382,18 +386,44 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     {
         Obj **obj_pair = game_state->p_coll_pairs[i];
 
-        /*if (!colliding(obj_pair, collision))
-        {
+        if (!get_collision(obj_pair, collision))
             continue;
-        }
-        f32 depth = collision->
-        while*/
 
-        if (get_collision(obj_pair, collision))
-        {
-            coll_num++;
-            collision = &game_state->collisions[coll_num];
+        f32 curr_dt = dt/2.0F;
+        f32 threshold = dt/32.0F;
+        //f32 depth = 0.0F;
+        f32 dist = 0.0F;
+        while (true) {
+            do
+            {
+                //depth = (collision->points[1] - collision->points[0]).length();
+                if (!obj_pair[0]->is_static)
+                    integrate(obj_pair[0], -curr_dt);
+                if (!obj_pair[1]->is_static)
+                    integrate(obj_pair[1], -curr_dt);
+
+                curr_dt /= 2.0F;
+            } while (get_collision(obj_pair, collision));
+
+            // TODO compute dist between collision points; this is very bad
+            if (curr_dt < threshold)
+            {
+                break;
+            }
+
+            do
+            {
+                if (!obj_pair[0]->is_static)
+                    integrate(obj_pair[0], curr_dt);
+                if (!obj_pair[1]->is_static)
+                    integrate(obj_pair[1], curr_dt);
+
+                curr_dt /= 2.0F;
+            } while (!get_collision(obj_pair, collision));
         }
+
+        coll_num++;
+        collision = &game_state->collisions[coll_num];
     }
 
     for (u32 i = 0; i < coll_num; ++i)
