@@ -395,19 +395,21 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         if (!get_collision(obj_pair, collision))
             continue;
 
+        f32 abs_dt = dt;
         f32 curr_dt = dt/2.0F;
         f32 threshold = dt/16.0F;
-        while(true)
-        {
+        while (curr_dt > threshold) {
             do
             {
+                abs_dt -= curr_dt;
                 if (!obj_pair[0]->is_static)
                     integrate_pos_rot(obj_pair[0], -curr_dt);
                 if (!obj_pair[1]->is_static)
                     integrate_pos_rot(obj_pair[1], -curr_dt);
 
-                curr_dt /= 2.0F;
-            } while (get_collision(obj_pair, collision));
+                if (curr_dt > threshold)
+                    curr_dt /= 2.0F;
+            } while ((abs_dt - curr_dt) >= 0.0F && get_collision(obj_pair, collision));
 
             // TODO compute dist between collision points; this is probably not a good way
             if (curr_dt < threshold)
@@ -417,13 +419,15 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
 
             do
             {
+                abs_dt += curr_dt;
                 if (!obj_pair[0]->is_static)
                     integrate_pos_rot(obj_pair[0], curr_dt);
                 if (!obj_pair[1]->is_static)
                     integrate_pos_rot(obj_pair[1], curr_dt);
 
-                curr_dt /= 2.0F;
-            } while (!get_collision(obj_pair, collision));
+                if (curr_dt > threshold)
+                    curr_dt /= 2.0F;
+            } while ((abs_dt + curr_dt) <= dt && !get_collision(obj_pair, collision));
         }
         coll_num++;
         collision = &game_state->collisions[coll_num];
