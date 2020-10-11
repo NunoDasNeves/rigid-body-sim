@@ -114,6 +114,7 @@ bool polys_colliding_sat(Obj *objs[2], Vec2 *verts[2], u32 num_verts[2], Collisi
     u32 num_verts_e = num_verts[0];
     u32 num_verts_v = num_verts[1];
     f32 closest_proj = -99.0F; /* TODO how to initialize this better */
+    Collision tmp_collision;
     for (u32 i = 0; i < 2; ++i)
     {
         /* Swap; we need to check both sets of edges */
@@ -147,11 +148,11 @@ bool polys_colliding_sat(Obj *objs[2], Vec2 *verts[2], u32 num_verts[2], Collisi
                     if (edge.dot(v) > 0.0F && (edge * -1.0F).dot(v2) > 0.0F)
                     {
                         closest_proj = proj_dist;
-                        collision->objs[0] = obj_e;
-                        collision->objs[1] = obj_v;
-                        collision->points[0] = verts_v[k] + n * proj_dist * -1.0F;
-                        collision->points[1] = verts_v[k];
-                        collision->normal = n;
+                        tmp_collision.objs[0] = obj_e;
+                        tmp_collision.objs[1] = obj_v;
+                        tmp_collision.points[0] = verts_v[k] + n * proj_dist * -1.0F;
+                        tmp_collision.points[1] = verts_v[k];
+                        tmp_collision.normal = n;
                     }
                 }
             }
@@ -161,6 +162,7 @@ bool polys_colliding_sat(Obj *objs[2], Vec2 *verts[2], u32 num_verts[2], Collisi
             }
         }
     }
+    memcpy(collision, &tmp_collision, sizeof(tmp_collision));
 
     return true;
 }
