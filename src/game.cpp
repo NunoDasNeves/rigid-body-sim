@@ -312,6 +312,29 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             mouse_released = true;
         }
     }
+    if (last_input->space && !input_buffer->prev_frame_input(1)->space)
+    {
+        game_state->mouse_dragging = false;
+        mouse_released = true;
+        mouse_pos = Vec2(-0.5736842155456543F, 0.5763158798217773F);
+        game_state->mouse_force_origin = Vec2(0.9710527658462524F, -0.9736841917037964F);
+    }
+
+    /* frame advance */
+    if (last_input->p && !input_buffer->prev_frame_input(1)->p)
+    {
+        game_state->paused = !game_state->paused;
+    }
+    if (game_state->paused)
+    {
+        if (last_input->right && !input_buffer->prev_frame_input(1)->right)
+        {
+        }
+        else
+        {
+            return;
+        }
+    }
 
     /* physics - apply forces*/
     Obj *objs = game_state->objs;
@@ -342,6 +365,8 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                 /* scale length on constant factor */
                 f32 m_force_scale = 100.0F;
                 Vec2 m_force = mouse_pos - game_state->mouse_force_origin;
+                DEBUG_PRINTF("mouse_pos = Vec2(%.16fF, %.16fF);\n", mouse_pos.x, mouse_pos.y);
+                DEBUG_PRINTF("game_state->mouse_force_origin = Vec2(%.16fF, %.16fF);\n", game_state->mouse_force_origin.x, game_state->mouse_force_origin.y);
                 m_force = m_force * m_force_scale;
                 Vec2 obj_to_mouse = mouse_to_obj * -1.0F;
                 obj->torque = obj->torque + (obj_to_mouse.x * m_force.y - obj_to_mouse.y * m_force.x);

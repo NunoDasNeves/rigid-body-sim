@@ -204,6 +204,9 @@ static void handle_event(SDL_Event* e)
                 case SDLK_s:
                     input->down = key_state;
                     break;
+                case SDLK_p:
+                    input->p = key_state;
+                    break;
                 case SDLK_SPACE:
                     input->space = key_state;
                     break;

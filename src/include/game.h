@@ -100,6 +100,7 @@ struct GameState
 {
     Vec2 camera_pos;
     Obj objs[MAX_OBJS];
+    bool paused;
 
     /* Physics */
     Obj *p_coll_pairs[MAX_OBJS * MAX_OBJS][2]; // potential

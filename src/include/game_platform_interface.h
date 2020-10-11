@@ -49,6 +49,8 @@ struct GameInput
     bool left;
     bool right;
 
+    bool p;
+
     bool space;
     bool esc;
 };
