@@ -51,6 +51,10 @@ struct GameInput
 
     bool p;
 
+    bool _1;
+    bool _2;
+    bool _3;
+
     bool space;
     bool esc;
 };

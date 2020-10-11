@@ -114,7 +114,8 @@ void physics_update(GameState *game_state, f32 dt);
 // Just for destructuring game memory buffer
 struct GameMemoryBlock
 {
-    GameState game_state;
+    GameState *game_state;
+    GameState game_states[10]; // one per number key
 };
 
 #define GAME_H
