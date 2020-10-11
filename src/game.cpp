@@ -165,6 +165,109 @@ bool polys_colliding_sat(Obj *objs[2], Vec2 *verts[2], u32 num_verts[2], Collisi
     return true;
 }
 
+bool get_collision(Obj **pair, Collision *collision)
+{
+    Obj *obj_pair[2] = {pair[0], pair[1]};
+    /* Order by shape, i.e. swap if circle is first in the pair */
+    if (obj_pair[1]->shape == Obj::Rect)
+    {
+        Obj *tmp = obj_pair[0];
+        obj_pair[0] = obj_pair[1];
+        obj_pair[1] = tmp;
+    }
+
+    /* Now we have 3 cases: circle/circle, rect/circle, rect/rect */
+    Vec2 obj2obj = obj_pair[1]->pos - obj_pair[0]->pos;
+
+    if (obj_pair[0]->shape == Obj::Rect)
+    {
+
+        Vec2 verts[2][4];
+        get_rect_verts(obj_pair[0], verts[0]);
+
+        /* Rect/Rect */
+        if (obj_pair[1]->shape == Obj::Rect)
+        {
+            get_rect_verts(obj_pair[1], verts[1]);
+            u32 _num_verts[2] = {4,4};
+            Vec2 *_verts[2] = {verts[0], verts[1]};
+            return polys_colliding_sat(obj_pair, _verts, _num_verts, collision);
+        }
+        /* Rect/Circle */
+        /* Strategy (generalizes to any convex polygon):
+            * 1. Check no vertices are inside circle       (simple)
+            * 2. Check no edges intersect circle           (find closest point to circle on line, check if it's in circle)
+            * 3. (TODO) Check circle center not inside rectangle  (point in polygon)
+            * Alternative (only rectangles):
+            * 1. Rotate rect and circle so rect is axis aligned for each v, v.rotate(-rect->rot)
+            * 2. Check no vertices are inside circle
+            * 3. If circle intersects on an axis with rect, check the center is further than the radius
+            * SAT strategy - should probably do this:
+            * 1. Check axes on edges of polygon
+            * 2. Check axes from each vertex of polygon to center of circle
+            */
+        Obj *rect = obj_pair[0];
+        Obj *circle = obj_pair[1];
+        Vec2 * rect_verts = verts[0];
+        /* (TODO) Check circle center not inside rectangle here */
+        for (int j = 0; j < 4; ++j)
+        {
+            Vec2 v2circle = circle->pos - rect_verts[j];
+            /* Vert in circle */
+            /* TODO
+                * In this case the circle is also colliding with an edge, we should use that instead
+                * UNLESS the circle completely covers the rectangle...then we do something random
+                * or use more continuous or sweep-y methods
+                */
+            if (v2circle.length() < circle->radius)
+            {
+                Vec2 coll_normal = (circle->pos - rect_verts[j]).normalized();
+                collision->objs[0] = rect;
+                collision->objs[1] = circle;
+                collision->points[0] = rect_verts[j];
+                collision->points[1] = circle->pos - coll_normal * circle->radius;
+                collision->normal = coll_normal;
+                return true;
+            }
+            Vec2 edge = rect_verts[(j+1) % 4] - rect_verts[j];
+            /* Point on line closest to circle */
+            Vec2 p = edge.normalized() * (edge.dot(v2circle) / edge.length());
+            /* Check if point lies between the verts, by checking its direction and length */
+            f32 edotp = edge.dot(p);
+            if (edotp < 0.0F || edotp > edge.dot(edge))
+            {
+                continue;
+            }
+            /* Check if point in circle */
+            Vec2 p2circle = v2circle - p;
+            if (p2circle.length() < circle->radius)
+            {
+                Vec2 p_point = rect_verts[j] + p;
+                Vec2 coll_normal = (circle->pos - p_point).normalized();
+                collision->objs[0] = rect;
+                collision->objs[1] = circle;
+                collision->points[0] = p_point;
+                collision->points[1] = circle->pos - coll_normal * circle->radius;
+                collision->normal = coll_normal;
+                return true;
+            }
+        }
+        return false;
+    }
+    /* Circle/Circle */
+    if (obj2obj.length() < (obj_pair[0]->radius + obj_pair[1]->radius))
+    {
+        Vec2 coll_normal = (obj_pair[1]->pos - obj_pair[0]->pos).normalized();
+        collision->objs[0] = obj_pair[0];
+        collision->objs[1] = obj_pair[1];
+        collision->points[0] = obj_pair[0]->pos + coll_normal * obj_pair[0]->radius;
+        collision->points[1] = obj_pair[1]->pos - coll_normal * obj_pair[1]->radius;
+        collision->normal = coll_normal;
+        return true;
+    }
+    return false;
+}
+
 void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buffer, GameRenderInfo* render_info)
 {
     GameMemoryBlock* block = (GameMemoryBlock*)(game_memory->memory);
@@ -200,7 +303,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     Obj *objs = game_state->objs;
 
     /* slow down */
-    dt *= 0.5F;
+    dt *= 0.8F;
 
     for (int i = 0; i < MAX_OBJS; ++i)
     {
@@ -223,7 +326,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             if (mouse_released)
             {
                 /* scale length on constant factor */
-                static const f32 m_force_scale = 30.0F;
+                f32 m_force_scale = 100.0F;
                 Vec2 m_force = mouse_pos - game_state->mouse_force_origin;
                 m_force = m_force * m_force_scale;
                 Vec2 obj_to_mouse = mouse_to_obj * -1.0F;
@@ -272,118 +375,19 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     /* narrow phase - produce pairs of colliding objects */
     u32 coll_num = 0;
     Collision *collision = &game_state->collisions[0];
-    bool colliding = false;
+    //bool colliding = false;
     for (u32 i = 0; i < p_coll_num; ++i)
     {
         Obj **obj_pair = game_state->p_coll_pairs[i];
-        /* Order by shape, i.e. swap if circle is first in the pair */
-        if (obj_pair[1]->shape == Obj::Rect)
+
+        /*if (!colliding(obj_pair, collision))
         {
-            Obj *tmp = obj_pair[0];
-            obj_pair[0] = obj_pair[1];
-            obj_pair[1] = tmp;
+            continue;
         }
+        f32 depth = collision->
+        while*/
 
-        /* Now we have 3 cases: circle/circle, rect/circle, rect/rect */
-        Vec2 obj2obj = obj_pair[1]->pos - obj_pair[0]->pos;
-
-        if (obj_pair[0]->shape == Obj::Rect)
-        {
-
-            Vec2 verts[2][4];
-            get_rect_verts(obj_pair[0], verts[0]);
-
-            /* Rect/Rect */
-            if (obj_pair[1]->shape == Obj::Rect)
-            {
-                get_rect_verts(obj_pair[1], verts[1]);
-                u32 _num_verts[2] = {4,4};
-                Vec2 *_verts[2] = {verts[0], verts[1]};
-                colliding = polys_colliding_sat(obj_pair, _verts, _num_verts, collision);
-            }
-            /* Rect/Circle */
-            else
-            {
-                /* Strategy (generalizes to any convex polygon):
-                 * 1. Check no vertices are inside circle       (simple)
-                 * 2. Check no edges intersect circle           (find closest point to circle on line, check if it's in circle)
-                 * 3. (TODO) Check circle center not inside rectangle  (point in polygon)
-                 * Alternative (only rectangles):
-                 * 1. Rotate rect and circle so rect is axis aligned for each v, v.rotate(-rect->rot)
-                 * 2. Check no vertices are inside circle
-                 * 3. If circle intersects on an axis with rect, check the center is further than the radius
-                 * SAT strategy - should probably do this:
-                 * 1. Check axes on edges of polygon
-                 * 2. Check axes from each vertex of polygon to center of circle
-                 */
-                colliding = false;
-                Obj *rect = obj_pair[0];
-                Obj *circle = obj_pair[1];
-                Vec2 * rect_verts = verts[0];
-                /* (TODO) Check circle center not inside rectangle here */
-                for (int j = 0; j < 4; ++j)
-                {
-                    Vec2 v2circle = circle->pos - rect_verts[j];
-                    /* Vert in circle */
-                    /* TODO
-                     * In this case the circle is also colliding with an edge, we should use that instead
-                     * UNLESS the circle completely covers the rectangle...then we do something random
-                     * or use more continuous or sweep-y methods
-                     */
-                    if (v2circle.length() < circle->radius)
-                    {
-                        colliding = true;
-                        Vec2 coll_normal = (circle->pos - rect_verts[j]).normalized();
-                        collision->objs[0] = rect;
-                        collision->objs[1] = circle;
-                        collision->points[0] = rect_verts[j];
-                        collision->points[1] = circle->pos - coll_normal * circle->radius;
-                        collision->normal = coll_normal;
-                        break;
-                    }
-                    Vec2 edge = rect_verts[(j+1) % 4] - rect_verts[j];
-                    /* Point on line closest to circle */
-                    Vec2 p = edge.normalized() * (edge.dot(v2circle) / edge.length());
-                    /* Check if point lies between the verts, by checking its direction and length */
-                    f32 edotp = edge.dot(p);
-                    if (edotp < 0.0F || edotp > edge.dot(edge))
-                    {
-                        continue;
-                    }
-                    /* Check if point in circle */
-                    Vec2 p2circle = v2circle - p;
-                    if (p2circle.length() < circle->radius)
-                    {
-                        colliding = true;
-                        Vec2 p_point = rect_verts[j] + p;
-                        Vec2 coll_normal = (circle->pos - p_point).normalized();
-                        collision->objs[0] = rect;
-                        collision->objs[1] = circle;
-                        collision->points[0] = p_point;
-                        collision->points[1] = circle->pos - coll_normal * circle->radius;
-                        collision->normal = coll_normal;
-                        break;
-                    }
-                }
-            }
-        }
-        /* Circle/Circle */
-        else
-        {
-            colliding = false;
-            if (obj2obj.length() < (obj_pair[0]->radius + obj_pair[1]->radius))
-            {
-                Vec2 coll_normal = (obj_pair[1]->pos - obj_pair[0]->pos).normalized();
-                collision->objs[0] = obj_pair[0];
-                collision->objs[1] = obj_pair[1];
-                collision->points[0] = obj_pair[0]->pos + coll_normal * obj_pair[0]->radius;
-                collision->points[1] = obj_pair[1]->pos - coll_normal * obj_pair[1]->radius;
-                collision->normal = coll_normal;
-                colliding = true;
-            }
-        }
-
-        if (colliding)
+        if (get_collision(obj_pair, collision))
         {
             coll_num++;
             collision = &game_state->collisions[coll_num];
@@ -563,7 +567,9 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     game_state->objs[2] = Obj::static_rect(0.2F, 2.0F, Vec2( 1.0F, 0.0F), 0);
     game_state->objs[3] = Obj::static_rect(0.2F, 2.0F, Vec2(-1.0F, 0.0F), 0);
     game_state->objs[4] = Obj::static_circle(0.2F, Vec2(0.0F,0.0F));
+    game_state->objs[5] = Obj::static_rect(0.2F, 0.4F, Vec2(0.0F, 0.4F), 0);
+    game_state->objs[6] = Obj::static_rect(1.0F, 0.2F, Vec2(-0.5F, 0.0F), 0);
 
-    game_state->objs[5] = Obj::dyn_circle(0.2F, Vec2(0.5F,0.0F), 1);
-    game_state->objs[6] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,0.0F), M_PI / 4.0F, 1);
+    game_state->objs[7] = Obj::dyn_circle(0.2F, Vec2(0.5F,0.0F), 1);
+    game_state->objs[8] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,0.5F), M_PI / 4.0F, 1);
 }
