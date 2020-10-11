@@ -270,11 +270,15 @@ bool get_collision(Obj **pair, Collision *collision)
     return false;
 }
 
-void integrate(Obj *obj, f32 dt)
+void integrate_vel_alpha(Obj *obj, f32 dt)
 {
     obj->vel = obj->vel + ((obj->force / obj->mass) * dt);
-    obj->pos = obj->pos + (obj->vel * dt);
     obj->alpha = obj->alpha + ((obj->torque / obj->inertia) * dt);
+}
+
+void integrate_pos_rot(Obj *obj, f32 dt)
+{
+    obj->pos = obj->pos + (obj->vel * dt);
     obj->rot = obj->rot + obj->alpha * dt;
 }
 
@@ -345,7 +349,8 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             }
         }
 
-        integrate(obj, dt);
+        integrate_vel_alpha(obj, dt);
+        integrate_pos_rot(obj, dt);
     }
 
     /* physics - collision detection */
@@ -383,7 +388,6 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     /* narrow phase - produce pairs of colliding objects */
     u32 coll_num = 0;
     Collision *collision = &game_state->collisions[0];
-    //bool colliding = false;
     for (u32 i = 0; i < p_coll_num; ++i)
     {
         Obj **obj_pair = game_state->p_coll_pairs[i];
@@ -392,22 +396,20 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             continue;
 
         f32 curr_dt = dt/2.0F;
-        f32 threshold = dt/32.0F;
-        //f32 depth = 0.0F;
-        f32 dist = 0.0F;
-        while (true) {
+        f32 threshold = dt/16.0F;
+        while(true)
+        {
             do
             {
-                //depth = (collision->points[1] - collision->points[0]).length();
                 if (!obj_pair[0]->is_static)
-                    integrate(obj_pair[0], -curr_dt);
+                    integrate_pos_rot(obj_pair[0], -curr_dt);
                 if (!obj_pair[1]->is_static)
-                    integrate(obj_pair[1], -curr_dt);
+                    integrate_pos_rot(obj_pair[1], -curr_dt);
 
                 curr_dt /= 2.0F;
             } while (get_collision(obj_pair, collision));
 
-            // TODO compute dist between collision points; this is very bad
+            // TODO compute dist between collision points; this is probably not a good way
             if (curr_dt < threshold)
             {
                 break;
@@ -416,14 +418,13 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             do
             {
                 if (!obj_pair[0]->is_static)
-                    integrate(obj_pair[0], curr_dt);
+                    integrate_pos_rot(obj_pair[0], curr_dt);
                 if (!obj_pair[1]->is_static)
-                    integrate(obj_pair[1], curr_dt);
+                    integrate_pos_rot(obj_pair[1], curr_dt);
 
                 curr_dt /= 2.0F;
             } while (!get_collision(obj_pair, collision));
         }
-
         coll_num++;
         collision = &game_state->collisions[coll_num];
     }
