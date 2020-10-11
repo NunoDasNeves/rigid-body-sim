@@ -364,6 +364,8 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             Obj *objB = &objs[j];
             if (!objB->exists)
                 continue;
+            if (objA->is_static && objB->is_static)
+                continue;
             if (objA->aabb.intersects(objB->aabb))
             {
                 game_state->p_coll_pairs[p_coll_num][0] = objA;
