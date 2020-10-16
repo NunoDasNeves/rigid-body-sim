@@ -406,118 +406,134 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         obj->dt = dt;
     }
 
-    /* physics - collision detection */
-    /* broad phase - compute AABBs */
-    for (int i = 0; i < MAX_OBJS; ++i)
+    /* Detect collisions and move stuff back so it's not actually colliding */
+    u32 coll_num = 0;
+    Collision *collision = &game_state->collisions[coll_num];
+    u32 iter = 0;
+    u32 colls_this_iter = 0;
+    do
     {
-        Obj *obj = &objs[i];
-        if (!obj->exists || obj->is_static)
-            continue;
-        obj->update_aabb();
-    }
-    /* broad phase - produce pairs of potentially colliding objects */
-    /* brute forceee */
-    u32 p_coll_num = 0;
-    for (int i = 0; i < MAX_OBJS; ++i)
-    {
-        Obj *objA = &objs[i];
-        if (!objA->exists)
-            continue;
-        for (int j = i + 1; j < MAX_OBJS; ++j)
+        colls_this_iter = 0;
+        /* physics - collision detection */
+        /* broad phase - compute AABBs */
+        for (int i = 0; i < MAX_OBJS; ++i)
         {
-            Obj *objB = &objs[j];
-            if (!objB->exists)
+            Obj *obj = &objs[i];
+            if (!obj->exists || obj->is_static)
                 continue;
-            if (objA->is_static && objB->is_static)
+            obj->update_aabb();
+        }
+        /* broad phase - produce pairs of potentially colliding objects */
+        /* brute forceee */
+        u32 p_coll_num = 0;
+        for (int i = 0; i < MAX_OBJS; ++i)
+        {
+            Obj *objA = &objs[i];
+            if (!objA->exists)
                 continue;
-            if (objA->aabb.intersects(objB->aabb))
+            for (int j = i + 1; j < MAX_OBJS; ++j)
             {
-                game_state->p_coll_pairs[p_coll_num][0] = objA;
-                game_state->p_coll_pairs[p_coll_num][1] = objB;
-                p_coll_num++;
+                Obj *objB = &objs[j];
+                if (!objB->exists)
+                    continue;
+                if (objA->is_static && objB->is_static)
+                    continue;
+                if (objA->aabb.intersects(objB->aabb))
+                {
+                    game_state->p_coll_pairs[p_coll_num][0] = objA;
+                    game_state->p_coll_pairs[p_coll_num][1] = objB;
+                    p_coll_num++;
+                }
             }
         }
-    }
-    /* narrow phase - produce pairs of colliding objects */
-    u32 coll_num = 0;
-    Collision *collision = &game_state->collisions[0];
-    for (u32 i = 0; i < p_coll_num; ++i)
-    {
-        Obj **obj_pair = game_state->p_coll_pairs[i];
-
-        if (!get_collision(obj_pair, collision))
-            continue;
-
-
-        // TODO compute dist between collision points; using dt is...hmm maybe its ok?
-        /*
-         * This pair is colliding
-         * They may have different dts
-         * We must use the earlier dt as the max dt
-         * Otherwise we undo previous work
-         */
-        f32 max_dt = MIN(obj_pair[0]->dt, obj_pair[1]->dt);
-        if (obj_pair[0]->is_static)
-            max_dt = obj_pair[1]->dt;
-        else if (obj_pair[1]->is_static)
-            max_dt = obj_pair[0]->dt;
-        /* reset to 0 */
-        if (!obj_pair[0]->is_static)
-            integrate_pos_rot(obj_pair[0], -obj_pair[0]->dt);
-        if (!obj_pair[1]->is_static)
-            integrate_pos_rot(obj_pair[1], -obj_pair[1]->dt);
-
-        f32 curr_dt = 0;
-        f32 step_dt = max_dt;
-        f32 threshold = dt / 16.0F; /* independent of max_dt */
-        bool c = get_collision(obj_pair, collision);
-        if (c)
+        /* narrow phase - produce pairs of colliding objects */
+        for (u32 i = 0; i < p_coll_num; ++i)
         {
-            DEBUG_PRINTF("Invariant broken - colliding at start of frame\n");
-            game_state->paused = true;
-            break;
-        }
-        while (true) {
-            /* Not colliding here - integrate forward to find collision */
-            do
+            Obj **obj_pair = game_state->p_coll_pairs[i];
+
+            if (!get_collision(obj_pair, collision))
+                continue;
+
+            // TODO compute dist between collision points; using dt is...hmm maybe its ok?
+            /*
+            * This pair is colliding
+            * They may have different dts
+            * We must use the earlier dt as the max dt
+            * Otherwise we undo previous work
+            */
+            // TODO actually, iterate on obj with max dt of the two, until it's dt == other obj's dt, then do both at once as here
+            f32 max_dt = MIN(obj_pair[0]->dt, obj_pair[1]->dt);
+            if (obj_pair[0]->is_static)
+                max_dt = obj_pair[1]->dt;
+            else if (obj_pair[1]->is_static)
+                max_dt = obj_pair[0]->dt;
+            /* reset to 0 */
+            if (!obj_pair[0]->is_static)
+                integrate_pos_rot(obj_pair[0], -obj_pair[0]->dt);
+            if (!obj_pair[1]->is_static)
+                integrate_pos_rot(obj_pair[1], -obj_pair[1]->dt);
+
+            f32 curr_dt = 0;
+            f32 step_dt = max_dt;
+            f32 threshold = dt / 16.0F; /* independent of max_dt */
+            bool c = get_collision(obj_pair, collision);
+            if (c)
             {
-                if (step_dt > threshold)
-                    step_dt /= 2.0F;
-                else
-                    break;
-
-                if (!obj_pair[0]->is_static)
-                    integrate_pos_rot(obj_pair[0], step_dt);
-                if (!obj_pair[1]->is_static)
-                    integrate_pos_rot(obj_pair[1], step_dt);
-
-                curr_dt += step_dt;
-                DEBUG_PRINTF("step forward to %f\n", curr_dt);
-
-            } while (/*(curr_dt + step_dt) < dt && */!get_collision(obj_pair, collision));
-
-            /* Colliding here - integrate backward to find non-collision */
-            do
-            {
-                if (step_dt > threshold)
-                    step_dt /= 2.0F;
-
-                if (!obj_pair[0]->is_static)
-                    integrate_pos_rot(obj_pair[0], -step_dt);
-                if (!obj_pair[1]->is_static)
-                    integrate_pos_rot(obj_pair[1], -step_dt);
-
-                curr_dt -= step_dt;
-                DEBUG_PRINTF("step backward to %f\n", curr_dt);
-
-            } while (/*(curr_dt + step_dt) < dt &&*/get_collision(obj_pair, collision));
-
-            if (step_dt <= threshold)
+                DEBUG_PRINTF("Invariant broken - colliding at start of frame: iter(%u)\n", iter);
+                game_state->paused = true;
                 break;
+            }
+            while (true) {
+                /* Not colliding here - integrate forward to find collision */
+                do
+                {
+                    if (step_dt > threshold)
+                        step_dt /= 2.0F;
+                    else
+                        break;
+
+                    if (!obj_pair[0]->is_static)
+                        integrate_pos_rot(obj_pair[0], step_dt);
+                    if (!obj_pair[1]->is_static)
+                        integrate_pos_rot(obj_pair[1], step_dt);
+
+                    curr_dt += step_dt;
+                    //DEBUG_PRINTF("step forward to %f\n", curr_dt);
+
+                } while (/*(curr_dt + step_dt) < dt && */!get_collision(obj_pair, collision));
+
+                /* Colliding here - integrate backward to find non-collision */
+                do
+                {
+                    if (step_dt > threshold)
+                        step_dt /= 2.0F;
+
+                    if (!obj_pair[0]->is_static)
+                        integrate_pos_rot(obj_pair[0], -step_dt);
+                    if (!obj_pair[1]->is_static)
+                        integrate_pos_rot(obj_pair[1], -step_dt);
+
+                    curr_dt -= step_dt;
+                    //DEBUG_PRINTF("step backward to %f\n", curr_dt);
+
+                } while (/*(curr_dt + step_dt) < dt &&*/get_collision(obj_pair, collision));
+
+                if (step_dt <= threshold)
+                    break;
+            }
+            //DEBUG_PRINTF("\n");
+
+            obj_pair[0]->dt = curr_dt;
+            obj_pair[1]->dt = curr_dt;
+            colls_this_iter++;
+            coll_num++;
+            collision = &game_state->collisions[coll_num];
         }
-        DEBUG_PRINTF("\n");
-        coll_num++;
-        collision = &game_state->collisions[coll_num];
+        iter++;
+    } while (colls_this_iter);
+    if (iter > 2)
+    {
+        DEBUG_PRINTF("%u\n", iter);
     }
 
     Collision dummy;
