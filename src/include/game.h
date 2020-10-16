@@ -20,7 +20,9 @@ struct Obj {
     f32 height; // ignored for circle
 
     Vec2 pos;
+    Vec2 old_pos;
     f32 rot;
+    f32 old_rot;
 
     enum {
         Circle,

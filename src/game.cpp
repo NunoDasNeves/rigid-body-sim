@@ -276,10 +276,10 @@ void integrate_vel_alpha(Obj *obj, f32 dt)
     obj->alpha = obj->alpha + ((obj->torque / obj->inertia) * dt);
 }
 
-void integrate_pos_rot(Obj *obj, f32 dt)
+void integrate_from_old_pos_rot(Obj *obj, f32 dt)
 {
-    obj->pos = obj->pos + (obj->vel * dt);
-    obj->rot = obj->rot + obj->alpha * dt;
+    obj->pos = obj->old_pos + (obj->vel * dt);
+    obj->rot = obj->old_rot + obj->alpha * dt;
 }
 
 void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buffer, GameRenderInfo* render_info)
@@ -402,8 +402,11 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         }
 
         integrate_vel_alpha(obj, dt);
-        integrate_pos_rot(obj, dt);
+        /* save old pos and rot */
+        obj->old_pos = obj->pos;
+        obj->old_rot = obj->rot;
         obj->dt = dt;
+        integrate_from_old_pos_rot(obj, dt);
     }
 
     /* Detect collisions and move stuff back so it's not actually colliding */
@@ -461,7 +464,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
             * We must use the earlier dt as the max dt
             * Otherwise we undo previous work
             */
-            // TODO actually, iterate on obj with max dt of the two, until it's dt == other obj's dt, then do both at once as here
+            // TODO actually, should iterate on obj with max dt of the two, until it's dt == other obj's dt, then do both at once as here
             f32 max_dt = MIN(obj_pair[0]->dt, obj_pair[1]->dt);
             if (obj_pair[0]->is_static)
                 max_dt = obj_pair[1]->dt;
@@ -469,11 +472,11 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                 max_dt = obj_pair[0]->dt;
             /* reset to 0 */
             if (!obj_pair[0]->is_static)
-                integrate_pos_rot(obj_pair[0], -obj_pair[0]->dt);
+                integrate_from_old_pos_rot(obj_pair[0], 0.0F);
             if (!obj_pair[1]->is_static)
-                integrate_pos_rot(obj_pair[1], -obj_pair[1]->dt);
+                integrate_from_old_pos_rot(obj_pair[1], 0.0F);
 
-            f32 curr_dt = 0;
+            f32 curr_dt = 0.0F;
             f32 step_dt = max_dt;
             f32 threshold = dt / 16.0F; /* independent of max_dt */
             bool c = get_collision(obj_pair, collision);
@@ -492,15 +495,13 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                     else
                         break;
 
+                    curr_dt = MIN(curr_dt + step_dt, max_dt);
                     if (!obj_pair[0]->is_static)
-                        integrate_pos_rot(obj_pair[0], step_dt);
+                        integrate_from_old_pos_rot(obj_pair[0], curr_dt);
                     if (!obj_pair[1]->is_static)
-                        integrate_pos_rot(obj_pair[1], step_dt);
+                        integrate_from_old_pos_rot(obj_pair[1], curr_dt);
 
-                    curr_dt += step_dt;
-                    //DEBUG_PRINTF("step forward to %f\n", curr_dt);
-
-                } while (/*(curr_dt + step_dt) < dt && */!get_collision(obj_pair, collision));
+                } while (!get_collision(obj_pair, collision));
 
                 /* Colliding here - integrate backward to find non-collision */
                 do
@@ -508,20 +509,17 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
                     if (step_dt > threshold)
                         step_dt /= 2.0F;
 
+                    curr_dt = MAX(curr_dt - step_dt, 0.0F);
                     if (!obj_pair[0]->is_static)
-                        integrate_pos_rot(obj_pair[0], -step_dt);
+                        integrate_from_old_pos_rot(obj_pair[0], curr_dt);
                     if (!obj_pair[1]->is_static)
-                        integrate_pos_rot(obj_pair[1], -step_dt);
+                        integrate_from_old_pos_rot(obj_pair[1], curr_dt);
 
-                    curr_dt -= step_dt;
-                    //DEBUG_PRINTF("step backward to %f\n", curr_dt);
-
-                } while (/*(curr_dt + step_dt) < dt &&*/get_collision(obj_pair, collision));
+                } while (get_collision(obj_pair, collision));
 
                 if (step_dt <= threshold)
                     break;
             }
-            //DEBUG_PRINTF("\n");
 
             obj_pair[0]->dt = curr_dt;
             obj_pair[1]->dt = curr_dt;
@@ -736,13 +734,14 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     game_state->objs[1] = Obj::static_rect(2.0F, 0.2F, Vec2( 0.0F,-1.0F), 0);
     game_state->objs[2] = Obj::static_rect(0.2F, 2.0F, Vec2( 1.0F, 0.0F), 0);
     game_state->objs[3] = Obj::static_rect(0.2F, 2.0F, Vec2(-1.0F, 0.0F), 0);
-    game_state->objs[4] = Obj::static_circle(0.2F, Vec2(0.0F,0.0F));
 
-    game_state->objs[5] = Obj::dyn_circle(0.2F, Vec2(0.5F,0.0F), 1);
-    game_state->objs[6] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,0.5F), M_PI / 4.0F, 1);
-    game_state->objs[7] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,-0.5F), M_PI / 4.0F, 1);
-    game_state->objs[8] = Obj::dyn_rect(0.3F, 0.2F, Vec2(0.5F,-0.5F), M_PI / 4.0F, 1);
-    game_state->objs[9] = Obj::dyn_rect(0.3F, 0.2F, Vec2(0.5F,0.5F), M_PI / 4.0F, 1);
+    for (u32 i = 0; i < 6; ++i)
+    {
+        for (u32 j = 0; j < 6; ++j)
+        {
+            game_state->objs[4 + i * 6 + j] = Obj::dyn_circle(0.14F, Vec2(-0.75F + (f32)i * 0.3F, -0.75F + (f32)j * 0.3F), 1);
+        }
+    }
 
     game_state = &block->initial_game_states[2];
 
