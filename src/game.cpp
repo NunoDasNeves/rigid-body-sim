@@ -296,20 +296,30 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
     /* switch between game states */
     if (last_input->_1 && !input_buffer->prev_frame_input(1)->_1)
     {
-        block->game_state = &block->game_states[0];
+        block->curr_state_i = 0;
+        block->game_state = &block->game_states[block->curr_state_i];
         return;
     }
     if (last_input->_2 && !input_buffer->prev_frame_input(1)->_2)
     {
-        block->game_state = &block->game_states[1];
+        block->curr_state_i = 1;
+        block->game_state = &block->game_states[block->curr_state_i];
         return;
     }
     if (last_input->_3 && !input_buffer->prev_frame_input(1)->_3)
     {
-        block->game_state = &block->game_states[2];
+        block->curr_state_i = 2;
+        block->game_state = &block->game_states[block->curr_state_i];
         return;
     }
-    
+    /* reset current game state */
+    if (last_input->r && !input_buffer->prev_frame_input(1)->r)
+    {
+        memcpy(game_state, &block->initial_game_states[block->curr_state_i], sizeof(GameState));
+        return;
+    }
+
+    /* mouse force */
     bool mouse_force_on = false;
     Vec2 mouse_pos = rendering_window_pos_to_viewport_pos(last_input->mouse_x, last_input->mouse_y);
     bool mouse_released = false;
@@ -643,7 +653,7 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     GameMemoryBlock* block = (GameMemoryBlock*)(game_memory->memory);
     GameState* game_state;
 
-    game_state = &block->game_states[0];
+    game_state = &block->initial_game_states[0];
 
     game_state->objs[0] = Obj::static_rect(2.0F, 0.2F, Vec2( 0.0F, 1.0F), 0);
     game_state->objs[1] = Obj::static_rect(2.0F, 0.2F, Vec2( 0.0F,-1.0F), 0);
@@ -656,7 +666,7 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     game_state->objs[7] = Obj::dyn_circle(0.2F, Vec2(0.5F,0.0F), 1);
     game_state->objs[8] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,0.5F), M_PI / 4.0F, 1);
 
-    game_state = &block->game_states[1];
+    game_state = &block->initial_game_states[1];
 
     game_state->objs[0] = Obj::static_rect(2.0F, 0.2F, Vec2( 0.0F, 1.0F), 0);
     game_state->objs[1] = Obj::static_rect(2.0F, 0.2F, Vec2( 0.0F,-1.0F), 0);
@@ -669,6 +679,27 @@ void game_init_memory(GameMemory* game_memory, GameRenderInfo* render_info)
     game_state->objs[7] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,-0.5F), M_PI / 4.0F, 1);
     game_state->objs[8] = Obj::dyn_rect(0.3F, 0.2F, Vec2(0.5F,-0.5F), M_PI / 4.0F, 1);
     game_state->objs[9] = Obj::dyn_rect(0.3F, 0.2F, Vec2(0.5F,0.5F), M_PI / 4.0F, 1);
+
+    game_state = &block->initial_game_states[2];
+
+    game_state->objs[0] = Obj::static_rect(2.0F, 0.2F, Vec2( 0.0F, 1.0F), 0);
+    game_state->objs[1] = Obj::static_rect(2.0F, 0.2F, Vec2( 0.0F,-1.0F), 0);
+    game_state->objs[2] = Obj::static_rect(0.2F, 2.0F, Vec2( 1.0F, 0.0F), 0);
+    game_state->objs[3] = Obj::static_rect(0.2F, 2.0F, Vec2(-1.0F, 0.0F), 0);
+
+    game_state->objs[4] = Obj::dyn_circle(0.25F, Vec2(0.0F,0.0F), 2);
+    game_state->objs[5] = Obj::dyn_circle(0.2F, Vec2(0.5F,0.0F), 1);
+    game_state->objs[6] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,0.5F), M_PI / 4.0F, 1);
+    game_state->objs[7] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,-0.5F), M_PI / 4.0F, 1);
+    game_state->objs[8] = Obj::dyn_rect(0.3F, 0.2F, Vec2(0.5F,-0.5F), M_PI / 4.0F, 1);
+    game_state->objs[9] = Obj::dyn_rect(0.3F, 0.2F, Vec2(0.5F,0.5F), M_PI / 4.0F, 1);
+    game_state->objs[10] = Obj::dyn_rect(0.3F, 0.2F, Vec2(0.0F,0.5F), M_PI / 3.0F, 1);
+    game_state->objs[11] = Obj::dyn_rect(0.3F, 0.2F, Vec2(-0.5F,0.0F), M_PI / 3.0F, 1);
+
+    for (int i = 0; i < 10; ++i)
+    {
+        memcpy(&block->game_states[i], &block->initial_game_states[i], sizeof(GameState));
+    }
 
     block->game_state = &block->game_states[0];
 }

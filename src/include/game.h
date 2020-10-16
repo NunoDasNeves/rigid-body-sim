@@ -115,7 +115,9 @@ void physics_update(GameState *game_state, f32 dt);
 struct GameMemoryBlock
 {
     GameState *game_state;
+    u32 curr_state_i;
     GameState game_states[10]; // one per number key
+    GameState initial_game_states[10]; // one per number key
 };
 
 #define GAME_H
