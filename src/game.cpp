@@ -447,43 +447,79 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
         if (!get_collision(obj_pair, collision))
             continue;
 
-        f32 abs_dt = dt;
-        f32 curr_dt = dt/2.0F;
-        f32 threshold = dt/16.0F;
-        while (curr_dt > threshold) {
-            do
-            {
-                abs_dt -= curr_dt;
-                if (!obj_pair[0]->is_static)
-                    integrate_pos_rot(obj_pair[0], -curr_dt);
-                if (!obj_pair[1]->is_static)
-                    integrate_pos_rot(obj_pair[1], -curr_dt);
 
-                if (curr_dt > threshold)
-                    curr_dt /= 2.0F;
-            } while ((abs_dt - curr_dt) >= 0.0F && get_collision(obj_pair, collision));
+        // TODO compute dist between collision points; using dt is...hmm maybe its ok?
+        /* reset to 0 */
+        if (!obj_pair[0]->is_static)
+            integrate_pos_rot(obj_pair[0], -dt);
+        if (!obj_pair[1]->is_static)
+            integrate_pos_rot(obj_pair[1], -dt);
 
-            // TODO compute dist between collision points; this is probably not a good way
-            if (curr_dt < threshold)
-            {
-                break;
-            }
-
-            do
-            {
-                abs_dt += curr_dt;
-                if (!obj_pair[0]->is_static)
-                    integrate_pos_rot(obj_pair[0], curr_dt);
-                if (!obj_pair[1]->is_static)
-                    integrate_pos_rot(obj_pair[1], curr_dt);
-
-                if (curr_dt > threshold)
-                    curr_dt /= 2.0F;
-            } while ((abs_dt + curr_dt) <= dt && !get_collision(obj_pair, collision));
+        f32 curr_dt = 0;
+        f32 step_dt = dt;
+        f32 threshold = dt / 16.0F;
+        bool c = get_collision(obj_pair, collision);
+        if (c)
+        {
+            DEBUG_PRINTF("Invariant broken - colliding at start of frame\n");
+            game_state->paused = true;
+            break;
         }
+        while (true) {
+            /* Not colliding here - integrate forward to find collision */
+            do
+            {
+                if (step_dt > threshold)
+                    step_dt /= 2.0F;
+                else
+                    break;
+
+                if (!obj_pair[0]->is_static)
+                    integrate_pos_rot(obj_pair[0], step_dt);
+                if (!obj_pair[1]->is_static)
+                    integrate_pos_rot(obj_pair[1], step_dt);
+
+                curr_dt += step_dt;
+                DEBUG_PRINTF("step forward to %f\n", curr_dt);
+
+            } while (/*(curr_dt + step_dt) < dt && */!get_collision(obj_pair, collision));
+
+            /* Colliding here - integrate backward to find non-collision */
+            do
+            {
+                if (step_dt > threshold)
+                    step_dt /= 2.0F;
+
+                if (!obj_pair[0]->is_static)
+                    integrate_pos_rot(obj_pair[0], -step_dt);
+                if (!obj_pair[1]->is_static)
+                    integrate_pos_rot(obj_pair[1], -step_dt);
+
+                curr_dt -= step_dt;
+                DEBUG_PRINTF("step backward to %f\n", curr_dt);
+
+            } while (/*(curr_dt + step_dt) < dt &&*/get_collision(obj_pair, collision));
+
+            if (step_dt <= threshold)
+                break;
+        }
+        DEBUG_PRINTF("\n");
         coll_num++;
         collision = &game_state->collisions[coll_num];
     }
+
+    Collision dummy;
+    for (u32 i = 0; i < coll_num; ++i)
+    {
+        Obj **obj_pair = game_state->collisions[i].objs;
+
+        if (get_collision(obj_pair, &dummy))
+        {
+            DEBUG_PRINTF("Invariant broken - colliding at end of frame\n");
+            game_state->paused = true;
+        }
+    }
+
 
     for (u32 i = 0; i < coll_num; ++i)
     {
