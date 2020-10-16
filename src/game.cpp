@@ -403,6 +403,7 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
 
         integrate_vel_alpha(obj, dt);
         integrate_pos_rot(obj, dt);
+        obj->dt = dt;
     }
 
     /* physics - collision detection */
@@ -449,15 +450,26 @@ void game_update_and_render(GameMemory* game_memory, GameInputBuffer* input_buff
 
 
         // TODO compute dist between collision points; using dt is...hmm maybe its ok?
+        /*
+         * This pair is colliding
+         * They may have different dts
+         * We must use the earlier dt as the max dt
+         * Otherwise we undo previous work
+         */
+        f32 max_dt = MIN(obj_pair[0]->dt, obj_pair[1]->dt);
+        if (obj_pair[0]->is_static)
+            max_dt = obj_pair[1]->dt;
+        else if (obj_pair[1]->is_static)
+            max_dt = obj_pair[0]->dt;
         /* reset to 0 */
         if (!obj_pair[0]->is_static)
-            integrate_pos_rot(obj_pair[0], -dt);
+            integrate_pos_rot(obj_pair[0], -obj_pair[0]->dt);
         if (!obj_pair[1]->is_static)
-            integrate_pos_rot(obj_pair[1], -dt);
+            integrate_pos_rot(obj_pair[1], -obj_pair[1]->dt);
 
         f32 curr_dt = 0;
-        f32 step_dt = dt;
-        f32 threshold = dt / 16.0F;
+        f32 step_dt = max_dt;
+        f32 threshold = dt / 16.0F; /* independent of max_dt */
         bool c = get_collision(obj_pair, collision);
         if (c)
         {

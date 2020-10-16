@@ -38,6 +38,7 @@ struct Obj {
     f32 alpha; // angular_vel
     Vec2 force;
     f32 torque;
+    f32 dt; // how much dt this object has had this frame
 
     static Obj dyn_circle(f32 radius, Vec2 pos, f32 mass)
     {
