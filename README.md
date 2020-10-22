@@ -1,6 +1,8 @@
-# Rigid body toy
+# Rigid body physics sim
 
-yup.
+![rigid bodies bouncing around](rigid-body-sim.gif)
+
+Built on my [sdl game starter](https://github.com/NunoDasNeves/sdl-game-starter) repo.
 
 ## Build
 
